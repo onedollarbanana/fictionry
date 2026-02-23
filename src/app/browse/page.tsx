@@ -43,6 +43,8 @@ export default async function BrowsePage({
     .from("stories")
     .select(`
       id,
+      slug,
+      short_id,
       title,
       tagline,
       blurb,

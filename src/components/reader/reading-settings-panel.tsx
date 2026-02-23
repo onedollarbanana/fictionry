@@ -61,7 +61,7 @@ function SettingsContent({
         <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2 block">
           Reading Mode
         </label>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button
             variant={settings.readingMode === 'paged' ? 'default' : 'outline'}
             size="sm"
@@ -128,7 +128,7 @@ function SettingsContent({
         <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2 block">
           Line Spacing
         </label>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {lineHeightOptions.map((option) => (
             <Button
               key={option.value}
@@ -172,7 +172,7 @@ function SettingsContent({
         <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2 block">
           Content Width
         </label>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {widthOptions.map((option) => (
             <Button
               key={option.value}

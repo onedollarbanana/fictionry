@@ -78,7 +78,7 @@ export default async function LibraryPage() {
   if (error) {
     console.error('Error fetching library:', error)
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
         <h1 className="text-3xl font-bold mb-6 flex items-center gap-2">My Library <HelpLink href="/guides/readers/getting-started" label="Reader guide" /></h1>
         <LibraryTabs />
         <p className="text-muted-foreground">Failed to load library. Please try again.</p>
@@ -163,7 +163,7 @@ export default async function LibraryPage() {
   })
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 max-w-6xl">
       <h1 className="text-3xl font-bold mb-6 flex items-center gap-2">My Library <HelpLink href="/guides/readers/getting-started" label="Reader guide" /></h1>
       <LibraryTabs />
       <LibraryClient items={libraryItems} />
