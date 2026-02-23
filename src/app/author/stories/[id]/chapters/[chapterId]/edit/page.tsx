@@ -429,7 +429,7 @@ export default function EditChapterPage() {
           </div>
         )}
 
-        <div className="flex gap-4 pt-4">
+        <div className="flex flex-wrap gap-3 pt-4">
           <Button
             type="button"
             variant="outline"

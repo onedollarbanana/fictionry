@@ -53,7 +53,7 @@ export function ChapterGatingConfig({ storyId, publishedChapterCount }: ChapterG
       (authorTiers ?? []).map(t => [t.tier_name, t.enabled])
     );
 
-    // Build tier settings in hierarchy order
+    // Build tier settings in hierarchy order - ALL tiers configurable
     const tierSettings: TierSetting[] = TIER_HIERARCHY
       .filter(name => enabledMap.get(name) === true)
       .map(name => ({
@@ -74,8 +74,10 @@ export function ChapterGatingConfig({ storyId, publishedChapterCount }: ChapterG
     loadTierSettings();
   }, [loadTierSettings]);
 
-  const updateAdvanceCount = (tierName: TierName, value: number) => {
-    const newVal = Math.max(0, value);
+  const updateAdvanceCount = (tierName: TierName, rawValue: string) => {
+    // Allow empty string for clearing the field
+    const parsed = rawValue === "" ? 0 : parseInt(rawValue, 10);
+    const newVal = isNaN(parsed) ? 0 : Math.max(0, Math.min(99, parsed));
     setTiers(prev => prev.map(t =>
       t.tierName === tierName ? { ...t, advanceChapterCount: newVal } : t
     ));
@@ -85,9 +87,7 @@ export function ChapterGatingConfig({ storyId, publishedChapterCount }: ChapterG
   const getValidationError = (): string | null => {
     // Higher tiers must have >= advance count of lower tiers
     for (let i = 1; i < tiers.length; i++) {
-      // The last tier (highest) is special - it always gets all chapters
-      // Only validate non-highest tiers against each other
-      if (i < tiers.length - 1 && tiers[i].advanceChapterCount < tiers[i - 1].advanceChapterCount) {
+      if (tiers[i].advanceChapterCount < tiers[i - 1].advanceChapterCount) {
         return `${PLATFORM_CONFIG.TIER_NAMES[tiers[i].tierName]} must have at least as many advance chapters as ${PLATFORM_CONFIG.TIER_NAMES[tiers[i - 1].tierName]}`;
       }
     }
@@ -104,9 +104,8 @@ export function ChapterGatingConfig({ storyId, publishedChapterCount }: ChapterG
     setSaving(true);
     const supabase = createClient();
 
-    // Upsert all non-highest tier settings
-    // Highest tier doesn't need a setting (always gets all)
-    const upserts = tiers.slice(0, -1).map(t => ({
+    // Upsert ALL tier settings (including highest)
+    const upserts = tiers.map(t => ({
       story_id: storyId,
       tier_name: t.tierName,
       advance_chapter_count: t.advanceChapterCount,
@@ -124,16 +123,6 @@ export function ChapterGatingConfig({ storyId, publishedChapterCount }: ChapterG
       }
     }
 
-    // Clean up highest tier setting if it exists (it always gets all)
-    if (tiers.length > 0) {
-      const highestTier = tiers[tiers.length - 1];
-      await supabase
-        .from("story_tier_settings")
-        .delete()
-        .eq("story_id", storyId)
-        .eq("tier_name", highestTier.tierName);
-    }
-
     showToast("Chapter gating updated! Chapters will be recalculated automatically.", "success");
     setSaving(false);
     setHasChanges(false);
@@ -145,15 +134,13 @@ export function ChapterGatingConfig({ storyId, publishedChapterCount }: ChapterG
   const getGatingPreview = () => {
     if (tiers.length === 0 || publishedChapterCount === 0) return null;
 
-    const highestAdvance = tiers.length > 1
-      ? Math.max(...tiers.slice(0, -1).map(t => t.advanceChapterCount))
-      : 0;
+    // Highest advance count determines free cutoff
+    const highestAdvance = Math.max(...tiers.map(t => t.advanceChapterCount));
 
     // If all advance counts are 0, everything is free
     if (highestAdvance === 0) return null;
 
     const freeCutoff = Math.max(0, publishedChapterCount - highestAdvance);
-    const highestTier = tiers[tiers.length - 1];
 
     const preview: { label: string; from: number; to: number; color: string }[] = [];
 
@@ -166,31 +153,22 @@ export function ChapterGatingConfig({ storyId, publishedChapterCount }: ChapterG
       });
     }
 
-    // For each non-highest tier, calculate their exclusive window
-    const nonHighest = tiers.slice(0, -1);
+    // Each tier gets an exclusive window
     let lastEnd = freeCutoff;
 
-    for (const tier of nonHighest) {
+    for (const tier of tiers) {
       const tierEnd = freeCutoff + tier.advanceChapterCount;
       if (tierEnd > lastEnd && lastEnd < publishedChapterCount) {
         preview.push({
           label: `${PLATFORM_CONFIG.TIER_NAMES[tier.tierName]}+`,
           from: lastEnd + 1,
           to: Math.min(tierEnd, publishedChapterCount),
-          color: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+          color: tier === tiers[tiers.length - 1]
+            ? "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
+            : "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
         });
-        lastEnd = tierEnd;
+        lastEnd = Math.min(tierEnd, publishedChapterCount);
       }
-    }
-
-    // Highest tier gets remaining (if any aren't covered)
-    if (lastEnd < publishedChapterCount) {
-      preview.push({
-        label: `${PLATFORM_CONFIG.TIER_NAMES[highestTier.tierName]}+`,
-        from: lastEnd + 1,
-        to: publishedChapterCount,
-        color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-      });
     }
 
     return preview;
@@ -224,7 +202,6 @@ export function ChapterGatingConfig({ storyId, publishedChapterCount }: ChapterG
 
   const preview = getGatingPreview();
   const validationError = getValidationError();
-  const highestTier = tiers[tiers.length - 1];
 
   return (
     <div className="p-4 rounded-lg border bg-card">
@@ -235,13 +212,14 @@ export function ChapterGatingConfig({ storyId, publishedChapterCount }: ChapterG
 
       <p className="text-sm text-muted-foreground mb-4">
         Set how many chapters ahead each tier gets. The newest chapters are gated;
-        older ones become free as you publish more. Your highest tier ({PLATFORM_CONFIG.TIER_NAMES[highestTier.tierName]}) always gets all chapters.
+        older ones become free as you publish more. Higher tiers must have more advance
+        chapters than lower tiers.
       </p>
 
       <div className="space-y-3">
-        {tiers.slice(0, -1).map((tier) => (
+        {tiers.map((tier) => (
           <div key={tier.tierName} className="flex items-center gap-3">
-            <label className="text-sm font-medium w-28">
+            <label className="text-sm font-medium w-28 shrink-0">
               {PLATFORM_CONFIG.TIER_NAMES[tier.tierName]}
               <span className="text-muted-foreground font-normal ml-1">
                 (${(PLATFORM_CONFIG.TIER_PRICES[tier.tierName] / 100).toFixed(0)}/mo)
@@ -249,28 +227,19 @@ export function ChapterGatingConfig({ storyId, publishedChapterCount }: ChapterG
             </label>
             <div className="flex items-center gap-2">
               <input
-                type="number"
-                min={0}
-                max={99}
-                value={tier.advanceChapterCount}
-                onChange={(e) => updateAdvanceCount(tier.tierName, parseInt(e.target.value) || 0)}
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={2}
+                value={tier.advanceChapterCount || ""}
+                placeholder="0"
+                onChange={(e) => updateAdvanceCount(tier.tierName, e.target.value)}
                 className="w-16 px-2 py-1 text-sm rounded border bg-background text-center"
               />
               <span className="text-sm text-muted-foreground">chapters ahead</span>
             </div>
           </div>
         ))}
-
-        {/* Highest tier - always all */}
-        <div className="flex items-center gap-3 opacity-60">
-          <label className="text-sm font-medium w-28">
-            {PLATFORM_CONFIG.TIER_NAMES[highestTier.tierName]}
-            <span className="text-muted-foreground font-normal ml-1">
-              (${(PLATFORM_CONFIG.TIER_PRICES[highestTier.tierName] / 100).toFixed(0)}/mo)
-            </span>
-          </label>
-          <span className="text-sm text-muted-foreground italic">All chapters</span>
-        </div>
       </div>
 
       {validationError && (
