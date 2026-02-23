@@ -433,7 +433,9 @@ export default async function StoryPage({ params }: PageProps) {
               <Button disabled>No Chapters Yet</Button>
             )}
             <LibraryButton 
-              storyId={storyId} 
+              storyId={storyId}
+              storySlug={resolved.slug}
+              storyShortId={resolved.short_id}
               initialFollowerCount={story.follower_count ?? 0} 
             />
             <ShareButtons

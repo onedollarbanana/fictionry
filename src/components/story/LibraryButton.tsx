@@ -14,6 +14,8 @@ type FollowStatus = "reading" | "plan_to_read" | "on_hold" | "finished" | "dropp
 
 interface LibraryButtonProps {
   storyId: string;
+  storySlug?: string;
+  storyShortId?: string;
   initialFollowerCount?: number;
 }
 
@@ -25,7 +27,7 @@ const STATUS_OPTIONS: { value: FollowStatus; label: string; icon: React.ReactNod
   { value: "dropped", label: "Dropped", icon: <XCircle className="h-4 w-4" />, color: "text-gray-500", defaultNotify: false },
 ];
 
-export function LibraryButton({ storyId, initialFollowerCount = 0 }: LibraryButtonProps) {
+export function LibraryButton({ storyId, storySlug, storyShortId, initialFollowerCount = 0 }: LibraryButtonProps) {
   const router = useRouter();
   const [userId, setUserId] = useState<string | null>(null);
   const [inLibrary, setInLibrary] = useState(false);
@@ -98,7 +100,7 @@ export function LibraryButton({ storyId, initialFollowerCount = 0 }: LibraryButt
 
   async function handleAddToLibrary(initialStatus: FollowStatus = "plan_to_read") {
     if (!userId) {
-      router.push(`/login?redirect=/story/${storyId}`);
+      router.push(`/login?redirect=/story/${storySlug && storyShortId ? `${storySlug}-${storyShortId}` : storyId}`);
       return;
     }
 

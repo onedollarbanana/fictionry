@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { getStoryUrl, getChapterUrl } from "@/lib/url-utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +43,7 @@ interface Report {
 }
 
 interface ReportsClientProps {
+  storySlugMap: Record<string, { slug: string; short_id: string }>;
   reports: Report[];
 }
 
@@ -66,7 +68,7 @@ const CONTENT_TYPE_LABELS: Record<string, string> = {
   user: "User",
 };
 
-export function ReportsClient({ reports }: ReportsClientProps) {
+export function ReportsClient({ reports, storySlugMap }: ReportsClientProps) {
   const [statusFilter, setStatusFilter] = useState<FilterStatus>("pending");
   const [reasonFilter, setReasonFilter] = useState<FilterReason>("all");
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
@@ -155,10 +157,17 @@ export function ReportsClient({ reports }: ReportsClientProps) {
 
   const getContentLink = (report: Report): string => {
     switch (report.content_type) {
-      case "story":
-        return `/story/${report.content_id}`;
-      case "chapter":
-        return `/story/chapter/${report.content_id}`;
+      case "story": {
+        const s = storySlugMap[report.content_id];
+        return s ? getStoryUrl({ id: report.content_id, slug: s.slug, short_id: s.short_id }) : `/story/${report.content_id}`;
+      }
+      case "chapter": {
+        const story = storySlugMap[`chapter:${report.content_id}`];
+        const ch = storySlugMap[`chapterSelf:${report.content_id}`];
+        return story && ch
+          ? getChapterUrl({ id: "", slug: story.slug, short_id: story.short_id }, { short_id: ch.short_id, slug: ch.slug })
+          : `/story/chapter/${report.content_id}`;
+      }
       case "comment":
         return `#comment-${report.content_id}`;
       case "rating":

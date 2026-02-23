@@ -1,3 +1,4 @@
+import { getChapterUrl } from "@/lib/url-utils";
 import { createAdminClient } from '@/lib/supabase-admin';
 
 // Lazy initialization for web-push (same pattern as Stripe)
@@ -103,12 +104,32 @@ export async function notifyFollowers(
     return { sent: 0, failed: 0 };
   }
 
+  // Look up slug data for clean URLs
+  const { data: storyData } = await supabase
+    .from('stories')
+    .select('slug, short_id')
+    .eq('id', storyId)
+    .single();
+
+  const { data: chapterData } = await supabase
+    .from('chapters')
+    .select('slug, short_id')
+    .eq('id', chapterId)
+    .single();
+
+  const notificationUrl = storyData && chapterData
+    ? getChapterUrl(
+        { id: storyId, slug: storyData.slug, short_id: storyData.short_id },
+        { short_id: chapterData.short_id, slug: chapterData.slug }
+      )
+    : `/story/${storyId}/chapter/${chapterId}`;
+
   const payload: PushPayload = {
     title: `New Chapter: ${storyTitle}`,
     body: `Chapter ${chapterNumber}: ${chapterTitle}`,
     icon: '/icons/icon-192x192.png',
     badge: '/icons/icon-72x72.png',
-    url: `/story/${storyId}/chapter/${chapterId}`,
+    url: notificationUrl,
   };
 
   let sent = 0;

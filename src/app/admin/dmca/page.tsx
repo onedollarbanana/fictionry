@@ -11,7 +11,7 @@ export default async function DmcaPage() {
     .from("dmca_claims")
     .select(`
       *,
-      story:stories(id, title, author_id),
+      story:stories(id, title, author_id, slug, short_id),
       handler:profiles!handled_by(username)
     `)
     .order("created_at", { ascending: false })

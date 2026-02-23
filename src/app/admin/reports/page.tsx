@@ -50,6 +50,40 @@ export default async function ReportsPage() {
     resolver: Array.isArray(r.resolver) ? r.resolver[0] || null : r.resolver,
   }));
 
+  // Look up slug/short_id for story and chapter reports
+  const storyIds = transformedReports
+    .filter((r) => r.content_type === "story")
+    .map((r) => r.content_id);
+  const chapterIds = transformedReports
+    .filter((r) => r.content_type === "chapter")
+    .map((r) => r.content_id);
+
+  const storySlugMap: Record<string, { slug: string; short_id: string }> = {};
+
+  if (storyIds.length > 0) {
+    const { data: stories } = await supabase
+      .from("stories")
+      .select("id, slug, short_id")
+      .in("id", storyIds);
+    stories?.forEach((s) => {
+      storySlugMap[s.id] = { slug: s.slug, short_id: s.short_id };
+    });
+  }
+
+  if (chapterIds.length > 0) {
+    const { data: chapters } = await supabase
+      .from("chapters")
+      .select("id, slug, short_id, stories!inner(id, slug, short_id)")
+      .in("id", chapterIds);
+    chapters?.forEach((c) => {
+      const story = Array.isArray(c.stories) ? c.stories[0] : c.stories;
+      if (story) {
+        storySlugMap[`chapter:${c.id}`] = { slug: story.slug, short_id: story.short_id };
+        storySlugMap[`chapterSelf:${c.id}`] = { slug: c.slug, short_id: c.short_id };
+      }
+    });
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -57,7 +91,7 @@ export default async function ReportsPage() {
         <p className="text-muted-foreground">Review and resolve user-submitted reports</p>
       </div>
 
-      <ReportsClient reports={transformedReports} />
+      <ReportsClient reports={transformedReports} storySlugMap={storySlugMap} />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { getStoryUrl } from "@/lib/url-utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -213,7 +214,7 @@ export function DmcaClient({ claims }: DmcaClientProps) {
                     </div>
                     <div className="flex items-center gap-2">
                       {claim.story && (
-                        <Link href={`/story/${claim.story.id}`} target="_blank">
+                        <Link href={getStoryUrl(claim.story)} target="_blank">
                           <Button variant="ghost" size="sm">
                             <ExternalLink className="h-4 w-4 mr-1" />
                             View Story

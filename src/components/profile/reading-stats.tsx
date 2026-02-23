@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getStoryUrl } from "@/lib/url-utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen, Library, CheckCircle, BookMarked } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -12,6 +13,8 @@ interface ReadingStatsData {
   recentActivity: Array<{
     storyId: string;
     storyTitle: string;
+    storySlug?: string;
+    storyShortId?: string;
     coverUrl: string | null;
     chaptersRead: number;
     totalChapters: number;
@@ -90,7 +93,7 @@ export function ReadingStats({ stats }: { stats: ReadingStatsData }) {
               {stats.recentActivity.map((activity) => (
                 <Link
                   key={activity.storyId}
-                  href={`/story/${activity.storyId}`}
+                  href={activity.storySlug && activity.storyShortId ? getStoryUrl({ id: activity.storyId, slug: activity.storySlug, short_id: activity.storyShortId }) : `/story/${activity.storyId}`}
                   className="flex items-center gap-4 p-2 rounded-lg hover:bg-muted/50 transition-colors"
                 >
                   {activity.coverUrl ? (

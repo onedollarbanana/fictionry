@@ -207,7 +207,7 @@ export default function DMCAPage() {
           </Label>
           <Input
             id="content-url"
-            placeholder="https://fictionry.io/story/..."
+            placeholder="https://fictionry.com/story/..."
             value={contentUrl}
             onChange={(e) => setContentUrl(e.target.value)}
             required
