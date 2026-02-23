@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Lock, Crown, Sparkles, Star, LogIn } from 'lucide-react'
+import { Lock, Crown, Sparkles, Star, LogIn, BookCheck } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -10,6 +11,7 @@ import Link from 'next/link'
 
 interface ChapterLockedOverlayProps {
   storyId: string
+  chapterId: string
   authorId: string
   authorName: string
   requiredTier: TierName
@@ -41,6 +43,7 @@ const TIER_COLORS: Record<string, string> = {
 
 export function ChapterLockedOverlay({
   storyId,
+  chapterId,
   authorId,
   authorName,
   requiredTier,
@@ -48,6 +51,25 @@ export function ChapterLockedOverlay({
   isLoggedIn,
 }: ChapterLockedOverlayProps) {
   const [loadingTier, setLoadingTier] = useState<string | null>(null)
+  const [markedRead, setMarkedRead] = useState(false)
+  const [markingRead, setMarkingRead] = useState(false)
+
+  const handleMarkAsRead = async () => {
+    setMarkingRead(true)
+    try {
+      const supabase = createClient()
+      await supabase.from('chapter_reads').upsert({
+        chapter_id: chapterId,
+        story_id: storyId,
+        user_id: (await supabase.auth.getUser()).data.user?.id,
+      }, { onConflict: 'user_id,chapter_id' })
+      setMarkedRead(true)
+    } catch (err) {
+      console.error('Error marking as read:', err)
+    } finally {
+      setMarkingRead(false)
+    }
+  }
 
   const handleSubscribe = async (tierName: TierName) => {
     setLoadingTier(tierName)
@@ -109,6 +131,28 @@ export function ChapterLockedOverlay({
               subscription or higher to {authorName}
             </p>
           </div>
+
+          {isLoggedIn && (
+            <div>
+              {markedRead ? (
+                <p className="text-sm text-green-600 dark:text-green-400 flex items-center justify-center gap-1.5">
+                  <BookCheck className="h-4 w-4" />
+                  Marked as read
+                </p>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleMarkAsRead}
+                  disabled={markingRead}
+                  className="text-muted-foreground"
+                >
+                  <BookCheck className="h-4 w-4 mr-1.5" />
+                  {markingRead ? 'Marking...' : 'Mark as read'}
+                </Button>
+              )}
+            </div>
+          )}
 
           {!isLoggedIn ? (
             <Button asChild size="lg">

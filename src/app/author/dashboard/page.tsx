@@ -1,357 +1,530 @@
-'use client'
+import { createClient } from "@/lib/supabase/server";
+import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
+import { TiptapRenderer } from "@/components/reader/tiptap-renderer";
+import { ChapterNav } from "@/components/reader/chapter-nav";
+import { ReadingProgressTracker } from "@/components/reader/reading-progress-tracker";
+import { ViewTracker } from "@/components/reader/view-tracker";
+import { CommentList } from "@/components/reader/comment-list";
+import { ChapterContentWrapper } from "@/components/reader/chapter-content-wrapper";
+import { KeyboardNavigation } from "@/components/reader/keyboard-navigation";
+import { SwipeNavigation } from "@/components/reader/swipe-navigation";
+import { MobileChapterNav } from "@/components/reader/mobile-chapter-nav";
+import { ScrollToTop } from "@/components/reader/scroll-to-top";
+import { AutoLibraryAdd } from "@/components/reader/auto-library-add";
+import { ChapterCompleteCard } from "@/components/reader/chapter-complete-card";
+import { CollapsibleComments } from "@/components/reader/collapsible-comments";
+import { ReadingTimeEstimate, countWordsFromTiptap } from "@/components/reader/reading-time-estimate";
+import { ScrollPositionTracker } from "@/components/reader/scroll-position-tracker";
+import { ChevronLeft } from "lucide-react";
+import { headers } from "next/headers";
+import { ReportButton } from "@/components/moderation/report-button";
+import { ChapterLockedOverlay } from "@/components/reader/chapter-locked-overlay";
+import { type TierName } from "@/lib/platform-config";
+import { ChapterOfflineCacher } from "@/components/reader/chapter-offline-cacher";
+import { ReadingModeSwitch } from "@/components/reader/reading-mode-switch";
+import { PagedModeOnly } from "@/components/reader/paged-mode-only";
+import type { Metadata } from "next";
+import { isLegacyUuid, parseStoryParam, parseChapterParam, getStoryUrl, getChapterUrl, getAbsoluteStoryUrl, getAbsoluteChapterUrl } from "@/lib/url-utils";
 
-import { useEffect, useState } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
-import { useUser } from '@/lib/hooks/useUser'
-import { AuthorStoryCard } from '@/components/author/story-card'
-import { ViewsChart } from '@/components/author/views-chart'
-import { ChapterEngagementTable } from '@/components/author/chapter-engagement-table'
-import { ActivityFeed } from '@/components/author/activity-feed'
-import { Button } from '@/components/ui/button'
-import { Plus, BookOpen, Eye, Users, Heart, FileText, BarChart3, Library, DollarSign, Wallet } from 'lucide-react'
-import { HelpLink } from '@/components/ui/help-link'
+export const revalidate = 120
 
-interface Story {
-  id: string
-  slug: string | null
-  short_id: string | null
-  title: string
-  tagline: string | null
-  blurb: string
-  cover_url: string | null
-  status: string
-  visibility: string
-  created_at: string
-  updated_at: string
-  chapter_count: number
-  word_count: number
-  follower_count: number
-  total_views: number
-  total_likes: number
-  rating_average: number
-  rating_count: number
+const TIER_HIERARCHY: Record<string, number> = {
+  supporter: 1,
+  enthusiast: 2,
+  patron: 3,
+};
+
+interface PageProps {
+  params: { id: string; chapterId: string };
 }
 
-interface AuthorStats {
-  total_views: number
-  views_last_week: number
-  views_this_week: number
-  total_followers: number
-  followers_last_week: number
-  followers_this_week: number
-  total_likes: number
-  likes_last_week: number
-  likes_this_week: number
-  total_chapters: number
-  total_words: number
-  total_stories: number
+/**
+ * Resolve the URL param to a story UUID.
+ * Handles both legacy UUID params and new slug-shortId params.
+ */
+async function resolveStoryParam(param: string, supabase: any): Promise<{ id: string; slug: string; short_id: string } | null> {
+  if (isLegacyUuid(param)) {
+    const { data } = await supabase.from("stories").select("id, slug, short_id").eq("id", param).single();
+    return data;
+  }
+  const parsed = parseStoryParam(param);
+  if (parsed) {
+    const { data } = await supabase.from("stories").select("id, slug, short_id").eq("short_id", parsed.shortId).single();
+    return data;
+  }
+  return null;
 }
 
-type Tab = 'analytics' | 'stories'
-
-function StatCard({ 
-  icon: Icon, 
-  label, 
-  value, 
-  thisWeek,
-  lastWeek,
-  color 
-}: { 
-  icon: React.ElementType
-  label: string
-  value: number
-  thisWeek?: number
-  lastWeek?: number
-  color: string
-}) {
-  const percentChange = lastWeek && lastWeek > 0 
-    ? Math.round(((thisWeek || 0) - lastWeek) / lastWeek * 100)
-    : null
-
-  return (
-    <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between">
-        <div className={`p-3 rounded-lg ${color}`}>
-          <Icon className="w-6 h-6" />
-        </div>
-        {percentChange !== null && (
-          <span className={`text-sm font-medium px-2 py-1 rounded-full ${
-            percentChange >= 0 
-              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-              : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-          }`}>
-            {percentChange >= 0 ? '+' : ''}{percentChange}%
-          </span>
-        )}
-      </div>
-      <div className="mt-4">
-        <p className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">
-          {value.toLocaleString()}
-        </p>
-        <p className="text-sm text-zinc-500 mt-1">{label}</p>
-        {thisWeek !== undefined && thisWeek > 0 && (
-          <p className="text-xs text-zinc-400 mt-1">+{thisWeek.toLocaleString()} this week</p>
-        )}
-      </div>
-    </div>
-  )
+/**
+ * Resolve the chapter URL param to a chapter UUID.
+ * Handles both legacy UUID params and new slug-shortId params.
+ */
+async function resolveChapterParam(
+  param: string,
+  storyId: string,
+  supabase: any
+): Promise<{ id: string; chapter_number: number; slug: string | null; short_id: string } | null> {
+  if (isLegacyUuid(param)) {
+    const { data } = await supabase
+      .from("chapters")
+      .select("id, chapter_number, slug, short_id")
+      .eq("id", param)
+      .eq("story_id", storyId)
+      .single();
+    return data;
+  }
+  const parsed = parseChapterParam(param);
+  if (parsed) {
+    const { data } = await supabase
+      .from("chapters")
+      .select("id, chapter_number, slug, short_id")
+      .eq("short_id", parsed.shortId)
+      .eq("story_id", storyId)
+      .single();
+    return data;
+  }
+  return null;
 }
 
-function SecondaryStatCard({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
-  return (
-    <div className="flex items-center gap-3 p-4 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
-      <Icon className="w-5 h-5 text-zinc-400" />
-      <div>
-        <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{value}</p>
-        <p className="text-xs text-zinc-500">{label}</p>
-      </div>
-    </div>
-  )
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id: storyIdParam, chapterId: chapterIdParam } = params;
+  const { createClient } = await import("@/lib/supabase/server");
+  const supabase = await createClient();
+
+  // Resolve story and chapter params
+  const resolvedStory = await resolveStoryParam(storyIdParam, supabase);
+  const resolvedStoryId = resolvedStory?.id || storyIdParam;
+  const resolvedChapter = await resolveChapterParam(chapterIdParam, resolvedStoryId, supabase);
+  const resolvedChapterId = resolvedChapter?.id || chapterIdParam;
+
+  const { data: chapter } = await supabase
+    .from("chapters")
+    .select(`
+      title,
+      chapter_number,
+      slug,
+      stories (
+        title,
+        cover_url,
+        genres,
+        slug,
+        short_id,
+        profiles!author_id(
+          username,
+          display_name
+        )
+      )
+    `)
+    .eq("id", resolvedChapterId)
+    .eq("story_id", resolvedStoryId)
+    .single();
+
+  if (!chapter || !chapter.stories) {
+    return { title: "Chapter Not Found | Fictionry" };
+  }
+
+  const story = chapter.stories as any;
+  const authorName = story.profiles?.display_name || story.profiles?.username || "Unknown";
+  const title = `${chapter.title} — ${story.title} by ${authorName} | Fictionry`;
+  const genreLabel = story.genres && story.genres.length > 0 ? ` — ${story.genres[0]} Fiction` : "";
+  const description = `Read Chapter ${chapter.chapter_number}: ${chapter.title} from ${story.title} by ${authorName}${genreLabel} on Fictionry`;
+
+  const ogParams = new URLSearchParams();
+  ogParams.set("title", `Ch. ${chapter.chapter_number}: ${chapter.title}`);
+  ogParams.set("author", authorName);
+  if (story.cover_url) ogParams.set("cover", story.cover_url);
+  ogParams.set("description", `From ${story.title}`);
+  if (story.genres && story.genres.length > 0) ogParams.set("genre", story.genres[0]);
+
+  const ogImageUrl = `https://www.fictionry.com/api/og?${ogParams.toString()}`;
+
+  const canonicalUrl = resolvedStory && resolvedChapter
+    ? getAbsoluteChapterUrl(
+        { id: resolvedStory.id, slug: story.slug, short_id: story.short_id },
+        { slug: chapter.slug, short_id: resolvedChapter.short_id }
+      )
+    : undefined;
+
+  return {
+    title,
+    description,
+    ...(canonicalUrl ? { alternates: { canonical: canonicalUrl } } : {}),
+    openGraph: {
+      title,
+      description,
+      type: "article",
+      images: [{ url: ogImageUrl, width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [ogImageUrl],
+    },
+  };
 }
 
-export default function AuthorDashboard() {
-  const { user, loading: userLoading } = useUser()
-  const router = useRouter()
-  const [stories, setStories] = useState<Story[]>([])
-  const [stats, setStats] = useState<AuthorStats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<Tab>('analytics')
+export default async function ChapterReadingPage({ params }: PageProps) {
+  const { id: storyIdParam, chapterId: chapterIdParam } = params;
+  const supabase = await createClient();
 
-  useEffect(() => {
-    if (!userLoading && !user) {
-      router.push('/login')
-      return
-    }
+  // Resolve story param
+  const resolvedStory = await resolveStoryParam(storyIdParam, supabase);
+  if (!resolvedStory) {
+    notFound();
+  }
+
+  const storyId = resolvedStory.id;
+
+  // Resolve chapter param
+  const resolvedChapter = await resolveChapterParam(chapterIdParam, storyId, supabase);
+  if (!resolvedChapter) {
+    notFound();
+  }
+
+  const chapterId = resolvedChapter.id;
+
+  // Redirect legacy UUID URLs to SEO-friendly slug URLs
+  const canonicalChapterPath = getChapterUrl(resolvedStory, resolvedChapter);
+  if (isLegacyUuid(storyIdParam) || isLegacyUuid(chapterIdParam)) {
+    redirect(canonicalChapterPath);
+  }
+
+  // Redirect if story slug doesn't match (e.g., story was renamed)
+  const parsedStory = parseStoryParam(storyIdParam);
+  if (parsedStory && parsedStory.slug !== resolvedStory.slug) {
+    redirect(canonicalChapterPath);
+  }
+
+  // Redirect if chapter slug doesn't match (e.g., chapter was renamed)
+  const parsedChapter = parseChapterParam(chapterIdParam);
+  if (parsedChapter && resolvedChapter.slug && parsedChapter.slug !== resolvedChapter.slug) {
+    redirect(canonicalChapterPath);
+  }
+
+  // Get current user (may be null if not logged in)
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // Fetch chapter with story info (including default author notes)
+  const { data: chapter, error } = await supabase
+    .from("chapters")
+    .select(`
+      *,
+      stories (
+        id,
+        title,
+        author_id,
+        default_author_note_before,
+        default_author_note_after,
+        profiles!author_id(
+          username
+        )
+      )
+    `)
+    .eq("id", chapterId)
+    .eq("story_id", storyId)
+    .single();
+
+  if (error || !chapter) {
+    notFound();
+  }
+
+  // Only show published chapters (unless author)
+  if (!chapter.is_published && chapter.stories?.author_id !== user?.id) {
+    notFound();
+  }
+
+  // Fetch author tiers for gating check
+  const { data: authorTiers } = await supabase
+    .from('author_tiers')
+    .select('tier_name, enabled, description')
+    .eq('author_id', chapter.stories?.author_id)
+    .eq('enabled', true);
+
+  // Check if chapter is gated and user has access
+  let hasAccess = true;
+  const requiredTier = chapter.min_tier_name;
+
+  if (requiredTier && chapter.stories?.author_id !== user?.id) {
+    hasAccess = false;
 
     if (user) {
-      fetchData()
-    }
-  }, [user, userLoading, router])
+      // Check if user has an active subscription to this author at required tier or higher
+      const { data: sub } = await supabase
+        .from('author_subscriptions')
+        .select('tier_name')
+        .eq('subscriber_id', user.id)
+        .eq('author_id', chapter.stories?.author_id)
+        .eq('status', 'active')
+        .single();
 
-  async function fetchData() {
-    const supabase = createClient()
-    
-    // Fetch stories
-    const { data: storiesData } = await supabase
-      .from('stories')
-      .select('id, slug, short_id, title, tagline, blurb, cover_url, status, visibility, created_at, updated_at, chapter_count, word_count, follower_count, total_views, total_likes, rating_average, rating_count')
-      .eq('author_id', user!.id)
-      .order('updated_at', { ascending: false })
-
-    if (storiesData) {
-      setStories(storiesData)
-    }
-
-    // Try to fetch enhanced stats
-    const { data: statsData, error: statsError } = await supabase.rpc('get_author_stats', {
-      author_uuid: user!.id
-    })
-
-    if (statsData && !statsError) {
-      setStats(statsData[0])
-    } else {
-      // Fallback: calculate basic stats from stories
-      const basicStats: AuthorStats = {
-        total_views: storiesData?.reduce((sum, s) => sum + (s.total_views || 0), 0) || 0,
-        views_last_week: 0,
-        views_this_week: 0,
-        total_followers: storiesData?.reduce((sum, s) => sum + (s.follower_count || 0), 0) || 0,
-        followers_last_week: 0,
-        followers_this_week: 0,
-        total_likes: storiesData?.reduce((sum, s) => sum + (s.total_likes || 0), 0) || 0,
-        likes_last_week: 0,
-        likes_this_week: 0,
-        total_chapters: storiesData?.reduce((sum, s) => sum + (s.chapter_count || 0), 0) || 0,
-        total_words: storiesData?.reduce((sum, s) => sum + (s.word_count || 0), 0) || 0,
-        total_stories: storiesData?.length || 0
+      if (sub && TIER_HIERARCHY[sub.tier_name] >= TIER_HIERARCHY[requiredTier]) {
+        hasAccess = true;
       }
-      setStats(basicStats)
     }
-
-    setLoading(false)
   }
 
-  if (userLoading || loading) {
-    return (
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="animate-pulse space-y-8">
-          <div className="h-8 bg-zinc-200 dark:bg-zinc-800 rounded w-48"></div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-40 bg-zinc-200 dark:bg-zinc-800 rounded-xl"></div>
-            ))}
-          </div>
-          <div className="h-64 bg-zinc-200 dark:bg-zinc-800 rounded-xl"></div>
-        </div>
+  // Fetch all chapters for navigation
+  const { data: allChapters } = await supabase
+    .from("chapters")
+    .select("id, title, chapter_number, is_published, slug, short_id")
+    .eq("story_id", storyId)
+    .eq("is_published", true)
+    .order("chapter_number", { ascending: true });
+
+  const chapters = allChapters || [];
+  const currentIndex = chapters.findIndex((ch) => ch.id === chapterId);
+  const prevChapter = currentIndex > 0 ? chapters[currentIndex - 1] : null;
+  const nextChapter = currentIndex < chapters.length - 1 ? chapters[currentIndex + 1] : null;
+
+  // Calculate word count for reading time
+  const wordCount = countWordsFromTiptap(chapter.content);
+
+  // Compute URLs for prev/next chapters
+  const prevChapterUrl = prevChapter ? getChapterUrl(resolvedStory, { slug: prevChapter.slug, short_id: prevChapter.short_id }) : undefined;
+  const nextChapterUrl = nextChapter ? getChapterUrl(resolvedStory, { slug: nextChapter.slug, short_id: nextChapter.short_id }) : undefined;
+  const storyUrlPath = getStoryUrl(resolvedStory);
+
+  // Get the current URL for sharing
+  const storyUrl = getAbsoluteStoryUrl(resolvedStory);
+
+  // Header content for the wrapper
+  const headerContent = (
+    <>
+      <Link
+        href={getStoryUrl(resolvedStory)}
+        className="flex items-center gap-1 text-sm opacity-70 hover:opacity-100 min-w-0 flex-shrink"
+      >
+        <ChevronLeft className="h-4 w-4 flex-shrink-0" />
+        <span className="truncate max-w-[120px] sm:max-w-[200px]">{chapter.stories?.title}</span>
+      </Link>
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <span className="text-sm font-medium whitespace-nowrap">Ch. {chapter.chapter_number}</span>
+        <ReadingTimeEstimate wordCount={wordCount} />
       </div>
-    )
-  }
-
-  if (!user) return null
+    </>
+  );
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">Author Dashboard <HelpLink href="/guides/authors/getting-started" label="Getting started guide" /></h1>
-          <p className="text-zinc-500 mt-1">Track your stories and engagement</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link href="/author/stats">
-            <Button variant="outline" className="gap-2">
-              <BarChart3 className="w-4 h-4" />
-              Writing Stats
-            </Button>
-          </Link>
-          <Link href="/author/dashboard/monetization">
-            <Button variant="outline" className="gap-2">
-              <DollarSign className="w-4 h-4" />
-              Monetization
-            </Button>
-          </Link>
-          <Link href="/author/dashboard/earnings">
-            <Button variant="outline" className="gap-2">
-              <Wallet className="w-4 h-4" />
-              Earnings
-            </Button>
-          </Link>
-          <Link href="/author/stories/new">
-            <Button className="gap-2">
-              <Plus className="w-4 h-4" />
-              New Story
-            </Button>
-          </Link>
-        </div>
-      </div>
+    <>
+      {/* Scroll to top on navigation — disabled in continuous scroll mode */}
+      <PagedModeOnly>
+        <ScrollToTop />
+      </PagedModeOnly>
 
-      {/* Tab Navigation */}
-      <div className="flex gap-1 p-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg w-fit">
-        <button
-          onClick={() => setActiveTab('analytics')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-            activeTab === 'analytics'
-              ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm'
-              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
-          }`}
-        >
-          <BarChart3 className="w-4 h-4" />
-          Analytics
-        </button>
-        <button
-          onClick={() => setActiveTab('stories')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-            activeTab === 'stories'
-              ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm'
-              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
-          }`}
-        >
-          <Library className="w-4 h-4" />
-          My Stories
-          {stories.length > 0 && (
-            <span className="ml-1 px-2 py-0.5 text-xs rounded-full bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300">
-              {stories.length}
-            </span>
-          )}
-        </button>
-      </div>
+      {/* Cache chapter for offline reading */}
+      <ChapterOfflineCacher
+        storyId={storyId}
+        chapterId={chapterId}
+        storyTitle={chapter.stories?.title || ''}
+        chapterTitle={chapter.title}
+        chapterNumber={chapter.chapter_number}
+        authorName={chapter.stories?.profiles?.username || 'Unknown'}
+        content={chapter.content}
+        wordCount={wordCount}
+        prevChapterId={prevChapter?.id}
+        nextChapterId={nextChapter?.id}
+      />
 
-      {/* Analytics Tab Content */}
-      {activeTab === 'analytics' && (
-        <div className="space-y-8">
-          {/* Primary Stats - Week over Week */}
-          {stats && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <StatCard
-                icon={Eye}
-                label="Total Views"
-                value={stats.total_views}
-                thisWeek={stats.views_this_week}
-                lastWeek={stats.views_last_week}
-                color="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
-              />
-              <StatCard
-                icon={Users}
-                label="Total Followers"
-                value={stats.total_followers}
-                thisWeek={stats.followers_this_week}
-                lastWeek={stats.followers_last_week}
-                color="bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400"
-              />
-              <StatCard
-                icon={Heart}
-                label="Total Likes"
-                value={stats.total_likes}
-                thisWeek={stats.likes_this_week}
-                lastWeek={stats.likes_last_week}
-                color="bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400"
-              />
-            </div>
-          )}
+      {/* Auto-add to library when reading chapter 2+ */}
+      <AutoLibraryAdd 
+        storyId={storyId} 
+        chapterNumber={chapter.chapter_number} 
+      />
 
-          {/* Secondary Stats */}
-          {stats && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <SecondaryStatCard
-                icon={BookOpen}
-                label="Stories"
-                value={stats.total_stories.toString()}
-              />
-              <SecondaryStatCard
-                icon={FileText}
-                label="Chapters"
-                value={stats.total_chapters.toLocaleString()}
-              />
-              <SecondaryStatCard
-                icon={BarChart3}
-                label="Words Written"
-                value={stats.total_words >= 1000 ? `${(stats.total_words / 1000).toFixed(1)}k` : stats.total_words.toString()}
-              />
-              <SecondaryStatCard
-                icon={Eye}
-                label="Avg Views/Chapter"
-                value={stats.total_chapters > 0 ? Math.round(stats.total_views / stats.total_chapters).toLocaleString() : '0'}
-              />
-            </div>
-          )}
+      {/* Track reading progress */}
+      <ReadingProgressTracker
+        storyId={storyId}
+        chapterId={chapterId}
+        chapterNumber={chapter.chapter_number}
+        userId={user?.id ?? null}
+      />
 
-          {/* Views Chart and Activity Feed - Side by Side on Desktop */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <ViewsChart authorId={user.id} />
-            <ActivityFeed authorId={user.id} />
-          </div>
+      {/* Track scroll position for resume reading */}
+      <ScrollPositionTracker
+        storyId={storyId}
+        chapterId={chapterId}
+        chapterNumber={chapter.chapter_number}
+        userId={user?.id ?? null}
+      />
 
-          {/* Chapter Engagement Table */}
-          <ChapterEngagementTable authorId={user.id} />
-        </div>
-      )}
+      {/* Track views (unique per session/user) */}
+      <ViewTracker chapterId={chapterId} storyId={storyId} hasAccess={hasAccess} />
 
-      {/* Stories Tab Content */}
-      {activeTab === 'stories' && (
-        <div>
-          {stories.length === 0 ? (
-            <div className="text-center py-12 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-              <BookOpen className="w-12 h-12 mx-auto text-zinc-400 mb-4" />
-              <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-2">No stories yet</h3>
-              <p className="text-zinc-500 mb-4">Start your writing journey today!</p>
-              <Link href="/author/stories/new">
-                <Button>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Your First Story
-                </Button>
+      {/* Keyboard/swipe navigation: disabled in continuous scroll mode */}
+      <PagedModeOnly>
+        <KeyboardNavigation
+          storyUrl={storyUrlPath}
+          prevChapterUrl={prevChapterUrl}
+          nextChapterUrl={nextChapterUrl}
+        />
+        <SwipeNavigation
+          prevChapterUrl={prevChapterUrl}
+          nextChapterUrl={nextChapterUrl}
+        />
+      </PagedModeOnly>
+
+      <ChapterContentWrapper 
+        headerContent={headerContent}
+        storyTitle={chapter.stories?.title || 'Fictionry'}
+        storyUrl={storyUrl}
+      >
+        <header className="mb-8">
+          <h1 className="text-2xl md:text-3xl font-bold">{chapter.title}</h1>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
+            <p className="opacity-70">
+              By{" "}
+              <Link
+                href={`/author/${chapter.stories?.profiles?.username}`}
+                className="hover:underline"
+              >
+                {chapter.stories?.profiles?.username || "Unknown"}
               </Link>
+            </p>
+            <ReadingTimeEstimate wordCount={wordCount} variant="full" />
+          </div>
+        </header>
+
+        {!hasAccess ? (
+          <ChapterLockedOverlay
+            storyId={storyId}
+            chapterId={chapterId}
+            authorId={chapter.stories?.author_id || ''}
+            authorName={chapter.stories?.profiles?.username || 'this author'}
+            requiredTier={requiredTier as TierName}
+            availableTiers={(authorTiers || []).map(t => ({
+              tier_name: t.tier_name as TierName,
+              enabled: t.enabled,
+              description: t.description,
+            }))}
+            isLoggedIn={!!user}
+          />
+        ) : (
+          <>
+            {/* Story Default Author's Note (Before) */}
+            {chapter.stories?.default_author_note_before && (
+              <div className="mb-6 p-4 rounded-lg bg-black/5 dark:bg-white/5 border-l-4 border-primary">
+                <p className="text-sm font-medium opacity-70 mb-1">Author&apos;s Note</p>
+                <p className="text-sm whitespace-pre-wrap break-words">{chapter.stories.default_author_note_before}</p>
+              </div>
+            )}
+
+            {/* Chapter-Specific Author's Note (Before) */}
+            {chapter.author_note_before && (
+              <div className="mb-8 p-4 rounded-lg bg-black/5 dark:bg-white/5 border-l-4 border-secondary">
+                <p className="text-sm font-medium opacity-70 mb-1">Chapter Note</p>
+                <p className="text-sm whitespace-pre-wrap break-words">{chapter.author_note_before}</p>
+              </div>
+            )}
+
+            {/* Main Content */}
+            <div className="prose dark:prose-invert max-w-none">
+              <TiptapRenderer content={chapter.content} />
             </div>
-          ) : (
-            <div className="grid gap-4">
-              {stories.map((story) => (
-                <AuthorStoryCard key={story.id} story={story} />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
+
+            {/* Chapter-Specific Author's Note (After) */}
+            {chapter.author_note_after && (
+              <div className="mt-8 p-4 rounded-lg bg-black/5 dark:bg-white/5 border-l-4 border-secondary">
+                <p className="text-sm font-medium opacity-70 mb-1">Chapter Note</p>
+                <p className="text-sm whitespace-pre-wrap break-words">{chapter.author_note_after}</p>
+              </div>
+            )}
+
+            {/* Story Default Author's Note (After) */}
+            {chapter.stories?.default_author_note_after && (
+              <div className="mt-6 p-4 rounded-lg bg-black/5 dark:bg-white/5 border-l-4 border-primary">
+                <p className="text-sm font-medium opacity-70 mb-1">Author&apos;s Note</p>
+                <p className="text-sm whitespace-pre-wrap break-words">{chapter.stories.default_author_note_after}</p>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Post-content: different rendering based on reading mode */}
+        <ReadingModeSwitch
+          pagedContent={
+            <>
+              <ChapterCompleteCard
+                storyUrl={storyUrlPath}
+                storyTitle={chapter.stories?.title ?? ""}
+                chapterId={chapterId}
+                chapterNumber={chapter.chapter_number}
+                chapterTitle={chapter.title}
+                totalChapters={chapters.length}
+                initialLikes={chapter.likes ?? 0}
+                currentUserId={user?.id ?? null}
+                storyAuthorId={chapter.stories?.author_id ?? ""}
+                prevChapter={prevChapterUrl && prevChapter ? { url: prevChapterUrl, title: prevChapter.title } : null}
+                nextChapter={nextChapterUrl && nextChapter ? { url: nextChapterUrl, title: nextChapter.title } : null}
+                shareUrl={getAbsoluteChapterUrl(resolvedStory, { slug: resolvedChapter.slug, short_id: resolvedChapter.short_id })}
+                shareTitle={`${chapter.title} — ${chapter.stories?.title || "Story"}`}
+                reportButton={
+                  user && user.id !== chapter.stories?.author_id ? (
+                    <ReportButton
+                      contentType="chapter"
+                      contentId={chapterId}
+                      contentTitle={`${chapter.stories?.title} - Ch. ${chapter.chapter_number}: ${chapter.title}`}
+                      size="sm"
+                      variant="ghost"
+                    />
+                  ) : undefined
+                }
+              />
+
+              {/* Chapter Navigation - Hidden on mobile (bottom nav shows instead) */}
+              <div className="hidden md:block">
+                <ChapterNav
+                  storyUrl={storyUrlPath}
+                  currentChapter={chapter.chapter_number}
+                  totalChapters={chapters.length}
+                  prevChapterUrl={prevChapterUrl}
+                  nextChapterUrl={nextChapterUrl}
+                />
+              </div>
+
+              {/* Comments - collapsed on mobile for binge readers */}
+              <CollapsibleComments>
+                <CommentList
+                  chapterId={chapterId}
+                  currentUserId={user?.id ?? null}
+                  storyAuthorId={chapter.stories?.author_id ?? ""}
+                />
+              </CollapsibleComments>
+            </>
+          }
+          continuousScrollData={{
+            initialChapterId: chapterId,
+            initialChapterTitle: chapter.title,
+            initialChapterNumber: chapter.chapter_number,
+            initialWordCount: wordCount,
+            initialCommentCount: 0,
+            allChapterIds: chapters.map(ch => ({ id: ch.id, title: ch.title, chapterNumber: ch.chapter_number, slug: ch.slug, shortId: ch.short_id })),
+            storyId,
+            storySlug: resolvedStory.slug,
+            storyShortId: resolvedStory.short_id,
+            storyTitle: chapter.stories?.title || '',
+            currentUserId: user?.id ?? null,
+            storyAuthorId: chapter.stories?.author_id ?? '',
+            authorName: (chapter.stories?.profiles as any)?.username || 'Unknown',
+            authorTiers: (authorTiers || []).map(t => ({
+              tier_name: t.tier_name,
+              enabled: t.enabled,
+              description: t.description,
+            })),
+          }}
+        />
+
+        {/* Mobile Bottom Navigation - always visible for jump-to-chapter */}
+        <MobileChapterNav
+          storyUrl={storyUrlPath}
+          storyTitle={chapter.stories?.title ?? ""}
+          prevChapter={prevChapterUrl && prevChapter ? { url: prevChapterUrl, title: prevChapter.title } : null}
+          nextChapter={nextChapterUrl && nextChapter ? { url: nextChapterUrl, title: nextChapter.title } : null}
+          currentChapterNumber={chapter.chapter_number}
+          totalChapters={chapters.length}
+        />
+      </ChapterContentWrapper>
+    </>
+  );
 }

@@ -317,6 +317,7 @@ export function ContinuousScrollReader({
               {!chapter.hasAccess ? (
                 <ChapterLockedOverlay
                   storyId={storyId}
+                  chapterId={chapter.id}
                   authorId={storyAuthorId}
                   authorName={chapter.authorName}
                   requiredTier={chapter.minTierName as TierName}
@@ -363,7 +364,7 @@ export function ContinuousScrollReader({
                 </>
               )}
 
-              <ViewTracker chapterId={chapter.id} storyId={storyId} />
+              <ViewTracker chapterId={chapter.id} storyId={storyId} hasAccess={chapter.hasAccess} />
             </div>
 
             {/* Separator between chapters */}

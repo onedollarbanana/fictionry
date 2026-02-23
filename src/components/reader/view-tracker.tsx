@@ -6,9 +6,11 @@ import { createClient } from "@/lib/supabase/client";
 interface ViewTrackerProps {
   chapterId: string;
   storyId: string;
+  /** If false, track the view but don't auto-mark as read */
+  hasAccess?: boolean;
 }
 
-export function ViewTracker({ chapterId, storyId }: ViewTrackerProps) {
+export function ViewTracker({ chapterId, storyId, hasAccess = true }: ViewTrackerProps) {
   const tracked = useRef(false);
 
   useEffect(() => {
@@ -41,8 +43,8 @@ export function ViewTracker({ chapterId, storyId }: ViewTrackerProps) {
         console.error("Error tracking view:", viewError);
       }
 
-      // Auto-mark as read for logged-in users (Royal Road style)
-      if (user) {
+      // Auto-mark as read for logged-in users (Royal Road style) — skip if gated
+      if (user && hasAccess) {
         const { error: readError } = await supabase.from("chapter_reads").upsert({
           chapter_id: chapterId,
           story_id: storyId,

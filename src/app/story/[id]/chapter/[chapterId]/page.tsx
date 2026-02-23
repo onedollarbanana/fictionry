@@ -350,7 +350,7 @@ export default async function ChapterReadingPage({ params }: PageProps) {
       />
 
       {/* Track views (unique per session/user) */}
-      <ViewTracker chapterId={chapterId} storyId={storyId} />
+      <ViewTracker chapterId={chapterId} storyId={storyId} hasAccess={hasAccess} />
 
       {/* Keyboard/swipe navigation: disabled in continuous scroll mode */}
       <PagedModeOnly>
@@ -389,6 +389,7 @@ export default async function ChapterReadingPage({ params }: PageProps) {
         {!hasAccess ? (
           <ChapterLockedOverlay
             storyId={storyId}
+            chapterId={chapterId}
             authorId={chapter.stories?.author_id || ''}
             authorName={chapter.stories?.profiles?.username || 'this author'}
             requiredTier={requiredTier as TierName}
