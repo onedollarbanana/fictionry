@@ -35,7 +35,6 @@ export async function GET() {
         display_name: PLATFORM_CONFIG.TIER_NAMES[tierName],
         price_cents: PLATFORM_CONFIG.TIER_PRICES[tierName],
         enabled: existing?.enabled ?? false,
-        advance_chapter_count: existing?.advance_chapter_count ?? 0,
         description: existing?.description ?? '',
       };
     });
@@ -70,11 +69,10 @@ export async function PUT(request: NextRequest) {
     // Validate and upsert each tier
     const upsertData = tiers
       .filter((t: { tier_name: string }) => VALID_TIER_NAMES.includes(t.tier_name as TierName))
-      .map((t: { tier_name: string; enabled?: boolean; advance_chapter_count?: number; description?: string }) => ({
+      .map((t: { tier_name: string; enabled?: boolean; description?: string }) => ({
         author_id: user.id,
         tier_name: t.tier_name,
         enabled: t.enabled ?? false,
-        advance_chapter_count: t.advance_chapter_count ?? 0,
         description: t.description ?? '',
         updated_at: new Date().toISOString(),
       }));

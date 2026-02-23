@@ -285,7 +285,7 @@ export default function StoryOverviewPage() {
             ))}
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Link href={`/author/stories/${storyId}/edit`}>
             <Button variant="outline">Edit Story</Button>
           </Link>

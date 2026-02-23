@@ -36,7 +36,6 @@ interface AccountStatus {
 interface TierConfig {
   tier_name: TierName
   enabled: boolean
-  advance_chapter_count: number
   description: string | null
   price_cents: number
   display_name: string
@@ -106,7 +105,6 @@ export default function MonetizationPage() {
         (Object.keys(PLATFORM_CONFIG.TIER_PRICES) as TierName[]).map((name) => ({
           tier_name: name,
           enabled: false,
-          advance_chapter_count: 0,
           description: null,
           price_cents: PLATFORM_CONFIG.TIER_PRICES[name],
           display_name: PLATFORM_CONFIG.TIER_NAMES[name],
@@ -183,7 +181,6 @@ export default function MonetizationPage() {
         tiers: tiers.map((t) => ({
           tier_name: t.tier_name,
           enabled: t.enabled,
-          advance_chapter_count: t.advance_chapter_count,
           description: t.description || null,
         })),
       }
@@ -396,7 +393,7 @@ export default function MonetizationPage() {
             </div>
             <div>
               <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Subscription Tiers</h2>
-              <p className="text-sm text-zinc-500">Configure which tiers you offer and how many advance chapters each gets</p>
+              <p className="text-sm text-zinc-500">Configure which subscription tiers you offer to readers</p>
             </div>
           </div>
           {isConnected && (
@@ -471,26 +468,7 @@ export default function MonetizationPage() {
                     </button>
                   </label>
 
-                  {/* Advance Chapter Count */}
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                      Advance chapters
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      max={50}
-                      value={tier.advance_chapter_count}
-                      disabled={!isConnected}
-                      onChange={(e) =>
-                        updateTier(tierName, {
-                          advance_chapter_count: Math.max(0, Math.min(50, parseInt(e.target.value) || 0)),
-                        })
-                      }
-                      className="w-full rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                    />
-                    <p className="text-xs text-zinc-400 mt-1">How many chapters ahead subscribers can read (0-50)</p>
-                  </div>
+
 
                   {/* Description */}
                   <div>
