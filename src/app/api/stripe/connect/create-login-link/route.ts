@@ -17,7 +17,7 @@ export async function POST() {
     // Look up author's Stripe Connect account
     const { data: account } = await adminSupabase
       .from('author_stripe_accounts')
-      .select('stripe_account_id, onboarding_complete')
+      .select('stripe_account_id, status')
       .eq('author_id', user.id)
       .maybeSingle();
 
@@ -28,7 +28,7 @@ export async function POST() {
       );
     }
 
-    if (!account.onboarding_complete) {
+    if (account.status !== 'active') {
       return NextResponse.json(
         { error: 'Please complete Stripe onboarding first.' },
         { status: 400 }
