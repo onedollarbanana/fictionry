@@ -7,7 +7,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { formatDistanceToNow } from 'date-fns'
 import { StatusDropdown } from '@/components/story/StatusDropdown'
-import { getStoryUrl } from "@/lib/url-utils";
+import { getStoryUrl, getChapterUrl } from "@/lib/url-utils";
 
 interface LibraryItem {
   followId: string
@@ -36,6 +36,10 @@ interface LibraryItem {
     read: number
     total: number
   }
+  latestChapter: { chapterNumber: number; title: string; publishedAt: string; shortId: string; slug: string } | null
+  lastReadChapter: { chapterNumber: number; title: string; readAt: string } | null
+  nextChapter: { chapterNumber: number; title: string; shortId: string; slug: string } | null
+  newChaptersSinceLastRead: number
 }
 
 interface LibraryClientProps {
@@ -319,13 +323,51 @@ export function LibraryClient({ items: initialItems }: LibraryClientProps) {
                   </div>
                 )}
 
+                {/* Chapter info */}
+                {(item.nextChapter || item.latestChapter || item.newChaptersSinceLastRead > 0) && (
+                  <div className="text-xs space-y-0.5 mb-2">
+                    {item.nextChapter && item.progress.read > 0 && (
+                      <Link 
+                        href={getChapterUrl(item.story, { short_id: item.nextChapter.shortId, slug: item.nextChapter.slug })}
+                        className="block text-primary hover:underline"
+                      >
+                        📖 Continue: Ch. {item.nextChapter.chapterNumber} — {item.nextChapter.title}
+                      </Link>
+                    )}
+                    {item.newChaptersSinceLastRead > 0 && (
+                      <p className="text-amber-600 dark:text-amber-400">
+                        ✨ {item.newChaptersSinceLastRead} new chapter{item.newChaptersSinceLastRead !== 1 ? 's' : ''} since you last read
+                      </p>
+                    )}
+                    {item.latestChapter && (
+                      <p className="text-muted-foreground">
+                        📝 Latest: Ch. {item.latestChapter.chapterNumber} — {item.latestChapter.title} · {formatDistanceToNow(new Date(item.latestChapter.publishedAt))} ago
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {/* Actions */}
                 <div className="flex gap-2">
-                  <Link href={getStoryUrl(item.story)}>
-                    <Button size="sm" variant="outline">
-                      {item.progress.read > 0 && item.progress.read < item.progress.total ? 'Continue' : 'Read'}
-                    </Button>
-                  </Link>
+                  {item.nextChapter && item.progress.read > 0 ? (
+                    <Link href={getChapterUrl(item.story, { short_id: item.nextChapter.shortId, slug: item.nextChapter.slug })}>
+                      <Button size="sm" variant="outline">
+                        Continue Ch. {item.nextChapter.chapterNumber}
+                      </Button>
+                    </Link>
+                  ) : item.progress.read > 0 && item.progress.read >= item.progress.total && item.progress.total > 0 ? (
+                    <Link href={getStoryUrl(item.story)}>
+                      <Button size="sm" variant="outline">
+                        Caught up ✓
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Link href={getStoryUrl(item.story)}>
+                      <Button size="sm" variant="outline">
+                        {item.progress.read > 0 ? 'Continue' : 'Start Reading'}
+                      </Button>
+                    </Link>
+                  )}
                   <StatusDropdown
                     storyId={item.story.id}
                     currentStatus={item.status}

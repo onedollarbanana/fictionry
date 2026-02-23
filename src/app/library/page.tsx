@@ -127,6 +127,80 @@ export default async function LibraryPage() {
     })
   }
 
+  // Fetch latest chapter per story and user's last-read chapter per story
+  let latestChapterMap: Record<string, { chapterNumber: number; title: string; publishedAt: string; shortId: string; slug: string }> = {}
+  let lastReadMap: Record<string, { chapterNumber: number; title: string; readAt: string }> = {}
+  let nextChapterMap: Record<string, { chapterNumber: number; title: string; shortId: string; slug: string }> = {}
+
+  if (storyIds.length > 0) {
+    // Get latest published chapter per story
+    const { data: latestChapters } = await supabase
+      .from('chapters')
+      .select('story_id, chapter_number, title, published_at, short_id, slug')
+      .in('story_id', storyIds)
+      .eq('status', 'published')
+      .order('chapter_number', { ascending: false })
+
+    if (latestChapters) {
+      // Group by story, take first (highest chapter_number) per story
+      for (const ch of latestChapters) {
+        if (!latestChapterMap[ch.story_id]) {
+          latestChapterMap[ch.story_id] = {
+            chapterNumber: ch.chapter_number,
+            title: ch.title,
+            publishedAt: ch.published_at,
+            shortId: ch.short_id,
+            slug: ch.slug,
+          }
+        }
+      }
+    }
+
+    // Get user's read chapters with chapter info
+    const { data: userReads } = await supabase
+      .from('chapter_reads')
+      .select('chapter_id, story_id, read_at, chapters!inner(chapter_number, title)')
+      .eq('user_id', user.id)
+      .in('story_id', storyIds)
+
+    if (userReads) {
+      for (const read of userReads as any[]) {
+        const ch = Array.isArray(read.chapters) ? read.chapters[0] : read.chapters
+        if (ch) {
+          const storyId = read.story_id
+          if (!lastReadMap[storyId] || ch.chapter_number > lastReadMap[storyId].chapterNumber) {
+            lastReadMap[storyId] = {
+              chapterNumber: ch.chapter_number,
+              title: ch.title,
+              readAt: read.read_at,
+            }
+          }
+        }
+      }
+    }
+
+    // Calculate next chapter to read per story
+    for (const storyId of storyIds) {
+      const lastRead = lastReadMap[storyId]
+      const nextNum = lastRead ? lastRead.chapterNumber + 1 : 1
+      
+      // Find next chapter
+      if (latestChapters) {
+        const nextCh = latestChapters.find(
+          (ch: any) => ch.story_id === storyId && ch.chapter_number === nextNum
+        )
+        if (nextCh) {
+          nextChapterMap[storyId] = {
+            chapterNumber: nextCh.chapter_number,
+            title: nextCh.title,
+            shortId: nextCh.short_id,
+            slug: nextCh.slug,
+          }
+        }
+      }
+    }
+  }
+
   // Transform data for client component
   const libraryItems = validFollows.map(f => {
     // Handle profiles - could be array or single object from Supabase
@@ -158,7 +232,13 @@ export default async function LibraryPage() {
         updatedAt: f.story!.updated_at,
         authorUsername: username
       },
-      progress: progressMap[f.story!.id] || { read: 0, total: 0 }
+      progress: progressMap[f.story!.id] || { read: 0, total: 0 },
+      latestChapter: latestChapterMap[f.story!.id] || null,
+      lastReadChapter: lastReadMap[f.story!.id] || null,
+      nextChapter: nextChapterMap[f.story!.id] || null,
+      newChaptersSinceLastRead: lastReadMap[f.story!.id] 
+        ? Math.max(0, (latestChapterMap[f.story!.id]?.chapterNumber || 0) - lastReadMap[f.story!.id].chapterNumber)
+        : 0
     }
   })
 

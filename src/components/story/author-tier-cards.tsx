@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Crown, Sparkles, Star, BookOpen, LogIn } from 'lucide-react'
+import { Crown, Sparkles, Star, BookOpen, LogIn, CheckCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -95,6 +95,19 @@ export function AuthorTierCards({
         <BookOpen className="h-5 w-5" />
         Support {authorName}
       </h2>
+      {currentSubscription?.status === 'active' && (
+        <div className="mb-4 p-3 bg-primary/5 border border-primary/20 rounded-lg flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-primary" />
+            <span className="text-sm">
+              You&apos;re subscribed as <strong>{PLATFORM_CONFIG.TIER_NAMES[currentSubscription.tier_name]}</strong>
+            </span>
+          </div>
+          <Link href="/settings/billing" className="text-sm text-primary hover:underline">
+            Manage
+          </Link>
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {sortedTiers.map((tier) => {
           const price = PLATFORM_CONFIG.TIER_PRICES[tier.tier_name]
