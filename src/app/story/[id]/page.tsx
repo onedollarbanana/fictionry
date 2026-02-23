@@ -414,7 +414,7 @@ export default async function StoryPage({ params }: PageProps) {
           )}
 
           {/* Action Buttons */}
-          <div className="flex gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             {publishedChapters.length > 0 ? (
               <Button asChild>
                 <Link href={getChapterUrl(resolved, { short_id: publishedChapters[0].short_id, slug: publishedChapters[0].slug })}>
