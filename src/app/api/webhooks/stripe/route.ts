@@ -378,16 +378,17 @@ async function handleInvoicePaid(
     const netAmountCents = amountPaid - platformFeeCents;
 
     // Record revenue
-    await supabase.from('author_revenue').insert({
+    const { error: revenueError } = await supabase.from('author_revenue').insert({
       author_id: authorId,
       gross_amount_cents: amountPaid,
       platform_fee_cents: platformFeeCents,
       net_amount_cents: netAmountCents,
       description: `${tierName} subscription renewal`,
     });
+    if (revenueError) console.error('Failed to insert author_revenue:', revenueError);
 
     // Record transaction
-    await supabase.from('transactions').insert({
+    const { error: txError } = await supabase.from('transactions').insert({
       user_id: sub.metadata.subscriber_id || null,
       type: 'author_subscription_payment',
       status: 'succeeded',
@@ -401,6 +402,7 @@ async function handleInvoicePaid(
       stripe_receipt_url: inv.hostedInvoiceUrl,
       description: `${tierName} subscription to author`,
     });
+    if (txError) console.error('Failed to insert transaction (author_sub):', txError);
 
     return; // Don't also process as reader premium
   }
@@ -416,7 +418,7 @@ async function handleInvoicePaid(
     .eq('stripe_subscription_id', inv.subscription)
     .maybeSingle();
 
-  await supabase.from('transactions').insert({
+  const { error: readerTxError } = await supabase.from('transactions').insert({
     user_id: userId,
     subscription_id: dbSub?.id || null,
     type: 'reader_premium_payment',
@@ -428,6 +430,7 @@ async function handleInvoicePaid(
     stripe_receipt_url: inv.hostedInvoiceUrl,
     description: `Reader Premium - ${sub.items.data[0]?.price?.recurring?.interval === 'year' ? 'Annual' : 'Monthly'}`,
   });
+  if (readerTxError) console.error('Failed to insert transaction (reader_premium):', readerTxError);
 }
 
 async function handlePaymentFailed(
