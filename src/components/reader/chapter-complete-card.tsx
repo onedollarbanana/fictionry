@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { ChevronLeft, ChevronRight, BookOpen, List } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ChapterLikeButton } from './chapter-like-button'
+import { ShareButtons } from '@/components/ui/share-buttons'
 
 interface ChapterCompleteCardProps {
   storyUrl: string
@@ -17,6 +18,8 @@ interface ChapterCompleteCardProps {
   storyAuthorId: string
   prevChapter: { url: string; title: string } | null
   nextChapter: { url: string; title: string } | null
+  shareUrl?: string
+  shareTitle?: string
   reportButton?: React.ReactNode
 }
 
@@ -31,6 +34,8 @@ export function ChapterCompleteCard({
   storyAuthorId,
   prevChapter,
   nextChapter,
+  shareUrl,
+  shareTitle,
   reportButton,
 }: ChapterCompleteCardProps) {
   return (
@@ -45,7 +50,7 @@ export function ChapterCompleteCard({
       </div>
 
       {/* Like + Report row */}
-      <div className="flex items-center justify-center gap-4 mb-6">
+      <div className="flex items-center justify-center gap-4 mb-4">
         <ChapterLikeButton
           chapterId={chapterId}
           initialLikes={initialLikes}
@@ -53,6 +58,18 @@ export function ChapterCompleteCard({
         />
         {currentUserId && currentUserId !== storyAuthorId && reportButton}
       </div>
+
+      {/* Share row */}
+      {shareUrl && (
+        <div className="flex items-center justify-center gap-2 mb-6">
+          <span className="text-xs font-medium opacity-50 uppercase tracking-wider">Share</span>
+          <ShareButtons
+            url={shareUrl}
+            title={shareTitle || ''}
+            description="Read on Fictionry"
+          />
+        </div>
+      )}
 
       {/* Next Chapter CTA - the star of the show */}
       {nextChapter ? (

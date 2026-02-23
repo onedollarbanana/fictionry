@@ -24,7 +24,6 @@ import { type TierName } from "@/lib/platform-config";
 import { ChapterOfflineCacher } from "@/components/reader/chapter-offline-cacher";
 import { ReadingModeSwitch } from "@/components/reader/reading-mode-switch";
 import { PagedModeOnly } from "@/components/reader/paged-mode-only";
-import { ShareButtons } from "@/components/ui/share-buttons";
 import type { Metadata } from "next";
 import { isLegacyUuid, parseStoryParam, parseChapterParam, getStoryUrl, getChapterUrl, getAbsoluteStoryUrl, getAbsoluteChapterUrl } from "@/lib/url-utils";
 
@@ -295,13 +294,13 @@ export default async function ChapterReadingPage({ params }: PageProps) {
     <>
       <Link
         href={getStoryUrl(resolvedStory)}
-        className="flex items-center gap-1 text-sm opacity-70 hover:opacity-100"
+        className="flex items-center gap-1 text-sm opacity-70 hover:opacity-100 min-w-0 flex-shrink"
       >
-        <ChevronLeft className="h-4 w-4" />
-        <span className="truncate max-w-[200px]">{chapter.stories?.title}</span>
+        <ChevronLeft className="h-4 w-4 flex-shrink-0" />
+        <span className="truncate max-w-[120px] sm:max-w-[200px]">{chapter.stories?.title}</span>
       </Link>
-      <div className="flex items-center gap-3">
-        <span className="text-sm font-medium">Chapter {chapter.chapter_number}</span>
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <span className="text-sm font-medium whitespace-nowrap">Ch. {chapter.chapter_number}</span>
         <ReadingTimeEstimate wordCount={wordCount} />
       </div>
     </>
@@ -373,7 +372,7 @@ export default async function ChapterReadingPage({ params }: PageProps) {
       >
         <header className="mb-8">
           <h1 className="text-2xl md:text-3xl font-bold">{chapter.title}</h1>
-          <div className="flex items-center gap-3 mt-2">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
             <p className="opacity-70">
               By{" "}
               <Link
@@ -384,11 +383,6 @@ export default async function ChapterReadingPage({ params }: PageProps) {
               </Link>
             </p>
             <ReadingTimeEstimate wordCount={wordCount} variant="full" />
-            <ShareButtons
-              url={getAbsoluteChapterUrl(resolvedStory, { slug: resolvedChapter.slug, short_id: resolvedChapter.short_id })}
-              title={`${chapter.title} — ${chapter.stories?.title || "Story"}`}
-              description={`Read ${chapter.title} from ${chapter.stories?.title || "a story"} on Fictionry`}
-            />
           </div>
         </header>
 
@@ -462,6 +456,8 @@ export default async function ChapterReadingPage({ params }: PageProps) {
                 storyAuthorId={chapter.stories?.author_id ?? ""}
                 prevChapter={prevChapterUrl && prevChapter ? { url: prevChapterUrl, title: prevChapter.title } : null}
                 nextChapter={nextChapterUrl && nextChapter ? { url: nextChapterUrl, title: nextChapter.title } : null}
+                shareUrl={getAbsoluteChapterUrl(resolvedStory, { slug: resolvedChapter.slug, short_id: resolvedChapter.short_id })}
+                shareTitle={`${chapter.title} — ${chapter.stories?.title || "Story"}`}
                 reportButton={
                   user && user.id !== chapter.stories?.author_id ? (
                     <ReportButton
