@@ -206,12 +206,27 @@ export default async function StoryPage({ params }: PageProps) {
   }
 
   // Fetch author tiers
+  // Fetch author tiers (global settings - no advance_chapter_count here)
   const { data: authorTiers } = await supabase
     .from('author_tiers')
-    .select('tier_name, enabled, description, advance_chapter_count')
+    .select('tier_name, enabled, description')
     .eq('author_id', story.author_id)
     .eq('enabled', true)
     .order('tier_name');
+
+  // Fetch per-story tier settings for advance chapter counts
+  const { data: storyTierSettings } = await supabase
+    .from('story_tier_settings')
+    .select('tier_name, advance_chapter_count')
+    .eq('story_id', storyId);
+
+  // Build a map of tier_name -> advance_chapter_count for this story
+  const advanceCountMap: Record<string, number> = {};
+  if (storyTierSettings) {
+    for (const s of storyTierSettings) {
+      advanceCountMap[s.tier_name] = s.advance_chapter_count;
+    }
+  }
 
   // Check user's subscription to this author
   let userSubscription = null;
@@ -513,7 +528,7 @@ export default async function StoryPage({ params }: PageProps) {
             tiers={authorTiers.map(t => ({
               tier_name: t.tier_name as TierName,
               description: t.description,
-              advance_chapter_count: t.advance_chapter_count,
+              advance_chapter_count: advanceCountMap[t.tier_name] || 0,
             }))}
             currentSubscription={userSubscription ? {
               tier_name: userSubscription.tier_name as TierName,
