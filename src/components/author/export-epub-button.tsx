@@ -12,11 +12,15 @@ interface ExportEpubButtonProps {
 
 export function ExportEpubButton({ storyId, storyTitle }: ExportEpubButtonProps) {
   const [loading, setLoading] = useState(false)
+  const [includeNotes, setIncludeNotes] = useState(false)
 
   const handleExport = async () => {
     setLoading(true)
     try {
-      const response = await fetch(`/api/export/epub?storyId=${storyId}`)
+      const params = new URLSearchParams({ storyId })
+      if (includeNotes) params.set('includeNotes', '1')
+      
+      const response = await fetch(`/api/export/epub?${params}`)
       
       if (!response.ok) {
         const error = await response.json().catch(() => ({ error: 'Export failed' }))
@@ -49,13 +53,25 @@ export function ExportEpubButton({ storyId, storyTitle }: ExportEpubButtonProps)
   }
 
   return (
-    <Button variant="outline" onClick={handleExport} disabled={loading}>
-      {loading ? (
-        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-      ) : (
-        <Download className="h-4 w-4 mr-2" />
-      )}
-      {loading ? 'Generating...' : 'Download EPUB'}
-    </Button>
+    <div className="flex items-center gap-3">
+      <Button variant="outline" onClick={handleExport} disabled={loading}>
+        {loading ? (
+          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+        ) : (
+          <Download className="h-4 w-4 mr-2" />
+        )}
+        {loading ? 'Generating...' : 'Download EPUB'}
+      </Button>
+      <label className="flex items-center gap-1.5 text-sm text-muted-foreground cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={includeNotes}
+          onChange={(e) => setIncludeNotes(e.target.checked)}
+          className="rounded border-border"
+          disabled={loading}
+        />
+        Include chapter notes
+      </label>
+    </div>
   )
 }

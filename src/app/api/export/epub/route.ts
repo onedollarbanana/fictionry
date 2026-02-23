@@ -37,6 +37,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'storyId is required' }, { status: 400 })
   }
 
+  const includeNotes = request.nextUrl.searchParams.get('includeNotes') === '1'
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   
@@ -95,7 +97,7 @@ export async function GET(request: NextRequest) {
       chapters: chapters.map((ch) => ({
         title: ch.title,
         chapterNumber: ch.chapter_number,
-        html: buildChapterHtml(ch.title, ch.content_html, ch.author_note_before, ch.author_note_after),
+        html: buildChapterHtml(ch.title, ch.content_html, ch.author_note_before, ch.author_note_after, includeNotes),
       })),
     })
 
@@ -122,17 +124,18 @@ function buildChapterHtml(
   title: string,
   contentHtml: string | null,
   noteBefore: string | null,
-  noteAfter: string | null
+  noteAfter: string | null,
+  includeNotes: boolean
 ): string {
   let html = ''
   
-  if (noteBefore) {
+  if (includeNotes && noteBefore) {
     html += `<div style="background:#f5f5f5;padding:12px;margin-bottom:16px;border-radius:4px;font-style:italic;"><p><strong>Author&apos;s Note:</strong></p>${noteBefore}</div>`
   }
   
   html += contentHtml || '<p>No content</p>'
   
-  if (noteAfter) {
+  if (includeNotes && noteAfter) {
     html += `<div style="background:#f5f5f5;padding:12px;margin-top:16px;border-radius:4px;font-style:italic;"><p><strong>Author&apos;s Note:</strong></p>${noteAfter}</div>`
   }
   
