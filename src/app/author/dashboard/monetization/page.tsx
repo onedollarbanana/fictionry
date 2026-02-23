@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useUser } from '@/lib/hooks/useUser'
 import { PLATFORM_CONFIG, type TierName } from '@/lib/platform-config'
@@ -53,11 +53,15 @@ const DEFAULT_DESCRIPTIONS: Record<TierName, string> = {
 export default function MonetizationPage() {
   const { user, loading: userLoading } = useUser()
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   // Stripe Connect state
   const [accountStatus, setAccountStatus] = useState<AccountStatus | null>(null)
   const [connectLoading, setConnectLoading] = useState(true)
   const [connectActionLoading, setConnectActionLoading] = useState(false)
+
+  // Onboarding state
+  const [onboardingSuccess, setOnboardingSuccess] = useState(false)
 
   // Tiers state
   const [tiers, setTiers] = useState<TierConfig[]>([])
@@ -73,8 +77,16 @@ export default function MonetizationPage() {
     try {
       const res = await fetch('/api/stripe/connect/account-status')
       if (!res.ok) throw new Error('Failed to fetch account status')
-      const data: AccountStatus = await res.json()
-      setAccountStatus(data)
+      const data = await res.json()
+      // Map snake_case API response to camelCase interface
+      setAccountStatus({
+        hasAccount: data.has_account ?? data.hasAccount ?? false,
+        stripeAccountId: data.stripe_account_id ?? data.stripeAccountId,
+        chargesEnabled: data.charges_enabled ?? data.chargesEnabled ?? false,
+        payoutsEnabled: data.payouts_enabled ?? data.payoutsEnabled ?? false,
+        detailsSubmitted: data.details_submitted ?? data.detailsSubmitted ?? false,
+        onboardingComplete: data.onboarding_complete ?? data.onboardingComplete ?? false,
+      })
     } catch {
       setAccountStatus({ hasAccount: false })
     } finally {
@@ -113,8 +125,15 @@ export default function MonetizationPage() {
     if (user) {
       fetchAccountStatus()
       fetchTiers()
+
+      // Handle onboarding return
+      if (searchParams.get('onboarding') === 'complete') {
+        setOnboardingSuccess(true)
+        // Clean URL without reload
+        window.history.replaceState({}, '', '/author/dashboard/monetization')
+      }
     }
-  }, [user, userLoading, router, fetchAccountStatus, fetchTiers])
+  }, [user, userLoading, router, searchParams, fetchAccountStatus, fetchTiers])
 
   // --- Handlers ---
 
@@ -247,6 +266,20 @@ export default function MonetizationPage() {
             <AlertCircle className="w-4 h-4 shrink-0" />
           )}
           {saveMessage.text}
+        </div>
+      )}
+
+      {onboardingSuccess && (
+        <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4 flex items-center gap-3">
+          <Check className="h-5 w-5 text-green-500 shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-green-400">
+              Stripe Connect setup complete! 🎉
+            </p>
+            <p className="text-xs text-green-400/70 mt-0.5">
+              Your account is being verified. You can start setting up your subscription tiers below.
+            </p>
+          </div>
         </div>
       )}
 

@@ -91,15 +91,35 @@ export async function POST(request: NextRequest) {
 
       case 'account.updated': {
         const account = event.data.object as Stripe.Account;
-        // Update our records when Connect account status changes
-        await supabase
-          .from('author_stripe_accounts')
-          .update({
-            onboarding_complete: account.details_submitted || false,
-            payouts_enabled: account.payouts_enabled || false,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('stripe_account_id', account.id);
+        const authorId = account.metadata?.author_id;
+        if (!authorId) {
+          // Try to find by stripe_account_id if metadata missing
+          const { data: existing } = await supabase
+            .from('author_stripe_accounts')
+            .select('author_id')
+            .eq('stripe_account_id', account.id)
+            .maybeSingle();
+          if (!existing) break;
+          await supabase
+            .from('author_stripe_accounts')
+            .update({
+              onboarding_complete: account.details_submitted || false,
+              payouts_enabled: account.payouts_enabled || false,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('stripe_account_id', account.id);
+        } else {
+          // Upsert - creates record if initial save failed
+          await supabase
+            .from('author_stripe_accounts')
+            .upsert({
+              author_id: authorId,
+              stripe_account_id: account.id,
+              onboarding_complete: account.details_submitted || false,
+              payouts_enabled: account.payouts_enabled || false,
+              updated_at: new Date().toISOString(),
+            }, { onConflict: 'author_id' });
+        }
         break;
       }
     }
