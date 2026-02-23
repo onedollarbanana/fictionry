@@ -14,9 +14,10 @@ export function useScrollPosition({ storyId, chapterId, chapterNumber, enabled =
   const [isRestored, setIsRestored] = useState(false)
   const [showResumeToast, setShowResumeToast] = useState(false)
   const lastSavedPosition = useRef(0)
+  const markedAsRead = useRef(false)
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Restore scroll position on mount
+  // Restore scroll position on mount — only if saved chapter matches current chapter
   useEffect(() => {
     if (!enabled) {
       setIsRestored(true)
@@ -33,12 +34,13 @@ export function useScrollPosition({ storyId, chapterId, chapterNumber, enabled =
 
       const { data } = await supabase
         .from('reading_progress')
-        .select('scroll_position')
+        .select('scroll_position, chapter_id')
         .eq('user_id', user.id)
         .eq('story_id', storyId)
         .single()
 
-      if (data?.scroll_position && data.scroll_position > 0.05) {
+      // Only restore scroll if this is the same chapter the user was reading
+      if (data?.scroll_position && data.scroll_position > 0.05 && data.chapter_id === chapterId) {
         // Wait for content to render
         requestAnimationFrame(() => {
           const docHeight = document.documentElement.scrollHeight - window.innerHeight
@@ -56,6 +58,27 @@ export function useScrollPosition({ storyId, chapterId, chapterNumber, enabled =
     const timer = setTimeout(restorePosition, 300)
     return () => clearTimeout(timer)
   }, [enabled, storyId, chapterId])
+
+  // Mark chapter as read when scroll reaches 90%
+  const markChapterAsRead = useCallback(async () => {
+    if (markedAsRead.current) return
+    markedAsRead.current = true
+
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { error } = await supabase.from('chapter_reads').upsert({
+      chapter_id: chapterId,
+      story_id: storyId,
+      user_id: user.id,
+    }, { onConflict: 'user_id,chapter_id' })
+
+    if (error) {
+      console.error('Error marking chapter as read:', error)
+      markedAsRead.current = false // Allow retry
+    }
+  }, [chapterId, storyId])
 
   // Save scroll position with debounce
   const savePosition = useCallback(async (position: number) => {
@@ -89,6 +112,11 @@ export function useScrollPosition({ storyId, chapterId, chapterNumber, enabled =
       const position = docHeight > 0 ? scrollTop / docHeight : 0
       const clamped = Math.min(1, Math.max(0, position))
 
+      // Mark as read when user reaches 90% of the chapter
+      if (clamped >= 0.9 && !markedAsRead.current) {
+        markChapterAsRead()
+      }
+
       // Only save if position changed meaningfully (>2%)
       if (Math.abs(clamped - lastSavedPosition.current) < 0.02) return
 
@@ -115,7 +143,7 @@ export function useScrollPosition({ storyId, chapterId, chapterNumber, enabled =
       window.removeEventListener('beforeunload', handleBeforeUnload)
       if (saveTimeout.current) clearTimeout(saveTimeout.current)
     }
-  }, [enabled, isRestored, savePosition])
+  }, [enabled, isRestored, savePosition, markChapterAsRead])
 
   return { isRestored, showResumeToast }
 }

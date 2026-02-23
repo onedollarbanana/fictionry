@@ -22,38 +22,23 @@ export function ReadingProgressTracker({
     const updateProgress = async () => {
       const supabase = createClient();
 
-      // Check existing progress
-      const { data: existing } = await supabase
+      // Always update reading_progress to reflect current chapter being read.
+      // This ensures "Continue Reading" points to where the user actually is,
+      // even if they go back to re-read an earlier chapter.
+      // Scroll position starts at 0 for the new chapter — useScrollPosition
+      // will update it as the user scrolls.
+      await supabase
         .from("reading_progress")
-        .select("id, chapter_number")
-        .eq("user_id", userId)
-        .eq("story_id", storyId)
-        .single();
-
-      // Only update if this is a higher chapter than previously read
-      if (existing && chapterNumber <= existing.chapter_number) {
-        return;
-      }
-
-      if (existing) {
-        // Update existing progress
-        await supabase
-          .from("reading_progress")
-          .update({
-            chapter_id: chapterId,
-            chapter_number: chapterNumber,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", existing.id);
-      } else {
-        // Insert new progress
-        await supabase.from("reading_progress").insert({
+        .upsert({
           user_id: userId,
           story_id: storyId,
           chapter_id: chapterId,
           chapter_number: chapterNumber,
+          scroll_position: 0, // Reset scroll for new chapter navigation
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'user_id,story_id',
         });
-      }
     };
 
     // Small delay to avoid updating on quick page bounces

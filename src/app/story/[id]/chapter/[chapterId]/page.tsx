@@ -450,6 +450,7 @@ export default async function ChapterReadingPage({ params }: PageProps) {
                 storyUrl={storyUrlPath}
                 storyTitle={chapter.stories?.title ?? ""}
                 chapterId={chapterId}
+                storyId={storyId}
                 chapterNumber={chapter.chapter_number}
                 chapterTitle={chapter.title}
                 totalChapters={chapters.length}

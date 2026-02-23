@@ -6,11 +6,11 @@ import { createClient } from "@/lib/supabase/client";
 interface ViewTrackerProps {
   chapterId: string;
   storyId: string;
-  /** If false, track the view but don't auto-mark as read */
+  /** @deprecated No longer used - read marking moved to scroll-based tracking */
   hasAccess?: boolean;
 }
 
-export function ViewTracker({ chapterId, storyId, hasAccess = true }: ViewTrackerProps) {
+export function ViewTracker({ chapterId, storyId }: ViewTrackerProps) {
   const tracked = useRef(false);
 
   useEffect(() => {
@@ -31,7 +31,7 @@ export function ViewTracker({ chapterId, storyId, hasAccess = true }: ViewTracke
         localStorage.setItem("fictionry_session", sessionId);
       }
 
-      // Try to insert a view (will fail silently if already exists due to unique constraint)
+      // Track the view (unique per session/user)
       const { error: viewError } = await supabase.from("chapter_views").upsert({
         chapter_id: chapterId,
         story_id: storyId,
@@ -43,18 +43,9 @@ export function ViewTracker({ chapterId, storyId, hasAccess = true }: ViewTracke
         console.error("Error tracking view:", viewError);
       }
 
-      // Auto-mark as read for logged-in users (Royal Road style) — skip if gated
-      if (user && hasAccess) {
-        const { error: readError } = await supabase.from("chapter_reads").upsert({
-          chapter_id: chapterId,
-          story_id: storyId,
-          user_id: user.id,
-        }, { onConflict: 'user_id,chapter_id' });
-
-        if (readError) {
-          console.error("Error marking as read:", readError);
-        }
-      }
+      // NOTE: Chapter read marking is now handled by useScrollPosition
+      // when the user scrolls past 90% of the chapter content.
+      // This prevents chapters from being marked "read" on brief visits.
     };
 
     // Small delay to avoid counting quick bounces

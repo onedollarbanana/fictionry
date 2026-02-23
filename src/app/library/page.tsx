@@ -179,8 +179,45 @@ export default async function LibraryPage() {
       }
     }
 
+    // Get reading_progress to find chapters the user is currently mid-read
+    const { data: readingProgress } = await supabase
+      .from('reading_progress')
+      .select('story_id, chapter_id, chapter_number, scroll_position')
+      .eq('user_id', user.id)
+      .in('story_id', storyIds)
+
+    // Build a set of chapter IDs that are marked as read
+    const readChapterIds = new Set<string>()
+    if (userReads) {
+      for (const read of userReads as any[]) {
+        readChapterIds.add(read.chapter_id)
+      }
+    }
+
     // Calculate next chapter to read per story
+    // Priority: in-progress chapter from reading_progress > next unread chapter
     for (const storyId of storyIds) {
+      // Check if user has an in-progress chapter (saved in reading_progress but not marked read)
+      const inProgress = readingProgress?.find(rp => rp.story_id === storyId)
+      if (inProgress && !readChapterIds.has(inProgress.chapter_id)) {
+        // User is mid-read on this chapter — find its details
+        if (latestChapters) {
+          const progressCh = latestChapters.find(
+            (ch: any) => ch.story_id === storyId && ch.chapter_number === inProgress.chapter_number
+          )
+          if (progressCh) {
+            nextChapterMap[storyId] = {
+              chapterNumber: progressCh.chapter_number,
+              title: progressCh.title,
+              shortId: progressCh.short_id,
+              slug: progressCh.slug,
+            }
+            continue // Skip the fallback logic
+          }
+        }
+      }
+
+      // Fallback: next unread chapter after the last one marked as read
       const lastRead = lastReadMap[storyId]
       const nextNum = lastRead ? lastRead.chapterNumber + 1 : 1
       

@@ -1,15 +1,18 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight, BookOpen, List } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ChapterLikeButton } from './chapter-like-button'
 import { ShareButtons } from '@/components/ui/share-buttons'
+import { createClient } from '@/lib/supabase/client'
 
 interface ChapterCompleteCardProps {
   storyUrl: string
   storyTitle: string
   chapterId: string
+  storyId: string
   chapterNumber: number
   chapterTitle: string
   totalChapters: number
@@ -27,6 +30,7 @@ export function ChapterCompleteCard({
   storyUrl,
   storyTitle,
   chapterId,
+  storyId,
   chapterNumber,
   totalChapters,
   initialLikes,
@@ -38,6 +42,24 @@ export function ChapterCompleteCard({
   shareTitle,
   reportButton,
 }: ChapterCompleteCardProps) {
+  // Safety net: mark chapter as read when user reaches the end-of-chapter card
+  const markedRead = useRef(false)
+  useEffect(() => {
+    if (markedRead.current || !currentUserId) return
+    markedRead.current = true
+
+    const markRead = async () => {
+      const supabase = createClient()
+      const { error } = await supabase.from('chapter_reads').upsert({
+        chapter_id: chapterId,
+        story_id: storyId,
+        user_id: currentUserId,
+      }, { onConflict: 'user_id,chapter_id' })
+      if (error) console.error('Error marking chapter as read:', error)
+    }
+    markRead()
+  }, [chapterId, storyId, currentUserId])
+
   return (
     <div className="mt-10 mb-4">
       {/* Divider */}
