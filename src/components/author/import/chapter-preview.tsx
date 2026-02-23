@@ -20,6 +20,41 @@ interface ChapterPreviewProps {
   storyId: string
 }
 
+/**
+ * Sanitize HTML to remove dangerous elements (scripts, event handlers, etc.)
+ * Uses the browser's built-in DOMParser — no external dependency needed.
+ */
+function sanitizeHtml(html: string): string {
+  if (typeof window === 'undefined') return html
+
+  const parser = new DOMParser()
+  const doc = parser.parseFromString(html, 'text/html')
+
+  // Remove script tags
+  doc.querySelectorAll('script').forEach((el) => el.remove())
+  // Remove style tags (CSS injection vector)
+  doc.querySelectorAll('style').forEach((el) => el.remove())
+
+  // Remove dangerous elements and event handler attributes
+  const allElements = doc.body.querySelectorAll('*')
+  allElements.forEach((el) => {
+    // Remove dangerous tags entirely
+    if (['iframe', 'object', 'embed', 'form', 'input', 'textarea', 'base', 'meta', 'link'].includes(el.tagName.toLowerCase())) {
+      el.remove()
+      return
+    }
+    // Remove event handlers and javascript: URLs
+    const attrs = Array.from(el.attributes)
+    attrs.forEach((attr) => {
+      if (attr.name.startsWith('on') || attr.value.startsWith('javascript:')) {
+        el.removeAttribute(attr.name)
+      }
+    })
+  })
+
+  return doc.body.innerHTML
+}
+
 export function ChapterPreview({
   chapters,
   onChaptersChange,
@@ -136,7 +171,7 @@ export function ChapterPreview({
             {expandedIndex === i && (
               <div
                 className="border-t p-4 text-sm prose prose-sm dark:prose-invert max-w-none max-h-64 overflow-y-auto"
-                dangerouslySetInnerHTML={{ __html: chapter.html }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(chapter.html) }}
               />
             )}
           </div>
@@ -147,7 +182,7 @@ export function ChapterPreview({
         <p className="text-sm text-yellow-500 flex items-center gap-1">
           <AlertTriangle className="w-4 h-4" />
           Some chapters have very low word counts (&lt;50 words). These may be
-          cover pages or table of contents \u2014 consider removing them.
+          cover pages or table of contents — consider removing them.
         </p>
       )}
 

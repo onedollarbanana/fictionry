@@ -1,10 +1,35 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { rateLimit, getRateLimitConfig } from '@/lib/rate-limit-server'
 
 export async function middleware(request: NextRequest) {
   // Skip if env vars not configured (prevents crash)
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     return NextResponse.next()
+  }
+
+  // --- Rate limiting for API routes ---
+  if (request.nextUrl.pathname.startsWith('/api')) {
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+    const config = getRateLimitConfig(request.nextUrl.pathname)
+    const result = rateLimit(
+      `${ip}:${request.nextUrl.pathname.split('/').slice(0, 3).join('/')}`,
+      config.limit,
+      config.windowMs
+    )
+
+    if (!result.success) {
+      return new NextResponse(JSON.stringify({ error: 'Too many requests' }), {
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          'Retry-After': String(Math.ceil((result.reset - Date.now()) / 1000)),
+          'X-RateLimit-Limit': String(config.limit),
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Reset': String(result.reset),
+        },
+      })
+    }
   }
 
   let response = NextResponse.next({
@@ -65,6 +90,23 @@ export async function middleware(request: NextRequest) {
           });
           return NextResponse.redirect(new URL(`/suspended?${params.toString()}`, request.url));
         }
+      }
+    }
+
+    // Admin route protection — block before page renders
+    if (request.nextUrl.pathname.startsWith('/admin')) {
+      if (!user) {
+        return NextResponse.redirect(new URL('/login', request.url))
+      }
+
+      const { data: adminProfile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+
+      if (!adminProfile || !['admin', 'moderator'].includes(adminProfile.role)) {
+        return NextResponse.redirect(new URL('/', request.url))
       }
     }
 
