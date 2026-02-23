@@ -214,7 +214,7 @@ export default function ImportChaptersPage() {
           href={`/author/stories/${storyId}`}
           className="text-muted-foreground hover:text-foreground"
         >
-          \u2190 Back to {storyTitle || "Story"}
+          ← Back to {storyTitle || "Story"}
         </Link>
       </div>
 
