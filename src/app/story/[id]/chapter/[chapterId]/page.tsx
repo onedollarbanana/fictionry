@@ -420,7 +420,7 @@ export default async function ChapterReadingPage({ params }: PageProps) {
             )}
 
             {/* Main Content */}
-            <div className="prose dark:prose-invert max-w-none">
+            <div id="chapter-content" className="prose dark:prose-invert max-w-none">
               <TiptapRenderer content={chapter.content} />
             </div>
 

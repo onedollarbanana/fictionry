@@ -43,8 +43,12 @@ export function useScrollPosition({ storyId, chapterId, chapterNumber, enabled =
       if (data?.scroll_position && data.scroll_position > 0.05 && data.chapter_id === chapterId) {
         // Wait for content to render
         requestAnimationFrame(() => {
-          const docHeight = document.documentElement.scrollHeight - window.innerHeight
-          const targetScroll = data.scroll_position * docHeight
+          const contentEl = document.getElementById('chapter-content')
+          if (!contentEl) { setIsRestored(true); return }
+          const rect = contentEl.getBoundingClientRect()
+          const contentTop = rect.top + window.scrollY
+          const contentHeight = contentEl.scrollHeight
+          const targetScroll = contentTop + (data.scroll_position * contentHeight)
           window.scrollTo({ top: targetScroll, behavior: 'smooth' })
           setShowResumeToast(true)
           // Auto-hide toast after 3 seconds
@@ -107,9 +111,14 @@ export function useScrollPosition({ storyId, chapterId, chapterNumber, enabled =
     if (!enabled || !isRestored) return
 
     const handleScroll = () => {
-      const scrollTop = window.scrollY
-      const docHeight = document.documentElement.scrollHeight - window.innerHeight
-      const position = docHeight > 0 ? scrollTop / docHeight : 0
+      const contentEl = document.getElementById('chapter-content')
+      if (!contentEl) return
+      const rect = contentEl.getBoundingClientRect()
+      const contentTop = contentEl.offsetTop
+      const contentHeight = contentEl.scrollHeight
+      // Position = how far the top of the viewport is through the content
+      const scrollIntoContent = window.scrollY - contentTop
+      const position = contentHeight > 0 ? scrollIntoContent / contentHeight : 0
       const clamped = Math.min(1, Math.max(0, position))
 
       // Mark as read when user reaches 90% of the chapter
@@ -131,9 +140,12 @@ export function useScrollPosition({ storyId, chapterId, chapterNumber, enabled =
 
     // Save on page leave
     const handleBeforeUnload = () => {
-      const scrollTop = window.scrollY
-      const docHeight = document.documentElement.scrollHeight - window.innerHeight
-      const position = docHeight > 0 ? Math.min(1, scrollTop / docHeight) : 0
+      const contentEl = document.getElementById('chapter-content')
+      if (!contentEl) return
+      const contentTop = contentEl.offsetTop
+      const contentHeight = contentEl.scrollHeight
+      const scrollIntoContent = window.scrollY - contentTop
+      const position = contentHeight > 0 ? Math.min(1, Math.max(0, scrollIntoContent / contentHeight)) : 0
       savePosition(position)
     }
     window.addEventListener('beforeunload', handleBeforeUnload)
