@@ -130,11 +130,12 @@ export function groupAchievementsByTrack(
   }
 
   // Sort milestones within each track by milestoneLevel (or thresholdValue)
-  for (const track of trackMap.values()) {
-    track.milestones.sort((a, b) => (a.milestoneLevel ?? 0) - (b.milestoneLevel ?? 0))
-  }
+  const tracks = Array.from(trackMap.values())
+  tracks.forEach(track => {
+    track.milestones.sort((a: AchievementDefinition, b: AchievementDefinition) => (a.milestoneLevel ?? 0) - (b.milestoneLevel ?? 0))
+  })
 
-  return Array.from(trackMap.values())
+  return tracks
 }
 
 // ---------------------------------------------------------------------------
