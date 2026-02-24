@@ -158,10 +158,10 @@ export function BrowseFilters({ genreCounts }: BrowseFiltersProps) {
 
       {/* Genre Pills */}
       <div className="overflow-x-auto">
-        <div className="flex flex-wrap gap-2">
+        <div className="flex overflow-x-auto md:flex-wrap md:overflow-x-visible pb-2 md:pb-0 gap-2 [&::-webkit-scrollbar]:hidden">
           <button
             onClick={() => updateParams("genre", "")}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
+            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
               !currentGenre 
                 ? 'bg-primary text-primary-foreground border-primary' 
                 : 'bg-muted/50 text-muted-foreground border-transparent hover:bg-muted'
@@ -177,7 +177,7 @@ export function BrowseFilters({ genreCounts }: BrowseFiltersProps) {
               <button
                 key={genre}
                 onClick={() => updateParams("genre", isActive ? "" : genre)}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
                   isActive
                     ? (config?.color || 'bg-primary/15 text-primary border-primary/30') + ' ring-2 ring-primary/30'
                     : 'bg-muted/50 text-muted-foreground border-transparent hover:bg-muted'

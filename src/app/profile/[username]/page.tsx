@@ -517,24 +517,24 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
 
       {/* Tabbed Content */}
       <Tabs defaultValue="activity" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="activity" className="flex items-center gap-2">
+        <TabsList className="flex w-full overflow-x-auto">
+          <TabsTrigger value="activity" className="flex-shrink-0 flex items-center gap-2">
             <Clock className="h-4 w-4" />
             <span className="hidden sm:inline">Activity</span>
           </TabsTrigger>
-          <TabsTrigger value="stories" className="flex items-center gap-2">
+          <TabsTrigger value="stories" className="flex-shrink-0 flex items-center gap-2">
             <BookOpen className="h-4 w-4" />
             <span className="hidden sm:inline">Stories ({stories?.length || 0})</span>
           </TabsTrigger>
-          <TabsTrigger value="library" className="flex items-center gap-2">
+          <TabsTrigger value="library" className="flex-shrink-0 flex items-center gap-2">
             <Library className="h-4 w-4" />
             <span className="hidden sm:inline">Library</span>
           </TabsTrigger>
-          <TabsTrigger value="reviews" className="flex items-center gap-2">
+          <TabsTrigger value="reviews" className="flex-shrink-0 flex items-center gap-2">
             <Star className="h-4 w-4" />
             <span className="hidden sm:inline">Reviews</span>
           </TabsTrigger>
-          <TabsTrigger value="achievements" className="flex items-center gap-2">
+          <TabsTrigger value="achievements" className="flex-shrink-0 flex items-center gap-2">
             <Trophy className="h-4 w-4" />
             <span className="hidden sm:inline">Achievements</span>
           </TabsTrigger>

@@ -27,7 +27,7 @@ export function GenreLinks() {
   return (
     <section className="mb-10">
       <h2 className="text-lg font-semibold mb-4">Browse by Genre</h2>
-      <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
         {genres.map((genre) => {
           const Icon = genre.icon;
           const href = genre.name === "All Genres" 

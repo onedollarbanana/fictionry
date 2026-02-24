@@ -121,7 +121,7 @@ export function Footer() {
           <p className="text-sm text-muted-foreground">
             © {currentYear} Fictionry. All rights reserved.
           </p>
-          <div className="flex gap-6 text-sm">
+          <div className="flex flex-wrap justify-center gap-6 text-sm">
             <Link href="/about" className="text-muted-foreground hover:text-foreground transition-colors">
               About
             </Link>

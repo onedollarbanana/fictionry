@@ -344,7 +344,7 @@ export default async function StoryPage({ params }: PageProps) {
       <div className="flex flex-col md:flex-row gap-6 mb-8">
         {/* Cover Image - 2:3 aspect ratio */}
         {story.cover_url ? (
-          <div className="relative w-full md:w-48 aspect-[2/3] rounded-lg overflow-hidden shrink-0">
+          <div className="relative max-w-[200px] mx-auto md:max-w-none md:mx-0 w-full md:w-48 aspect-[2/3] rounded-lg overflow-hidden shrink-0">
             <CommunityPickBadge pickMonth={communityPickData?.pickMonth} />
             <CoverLightbox
               src={`${story.cover_url}?t=${new Date(story.updated_at).getTime()}`}
@@ -352,14 +352,14 @@ export default async function StoryPage({ params }: PageProps) {
             />
           </div>
         ) : (
-          <div className="relative w-full md:w-48 aspect-[2/3] bg-gradient-to-br from-primary/20 to-primary/5 rounded-lg flex items-center justify-center shrink-0">
+          <div className="relative max-w-[200px] mx-auto md:max-w-none md:mx-0 w-full md:w-48 aspect-[2/3] bg-gradient-to-br from-primary/20 to-primary/5 rounded-lg flex items-center justify-center shrink-0">
             <CommunityPickBadge pickMonth={communityPickData?.pickMonth} />
             <BookOpen className="h-16 w-16 text-primary/40" />
           </div>
         )}
 
         <div className="flex-1">
-          <div className="flex items-start justify-between gap-2 mb-2">
+          <div className="flex flex-col sm:flex-row items-start justify-between gap-2 mb-2">
             <h1 className="text-3xl font-bold">{story.title}</h1>
             {isOwner && (
               <div className="flex gap-2 shrink-0">

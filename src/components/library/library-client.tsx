@@ -304,7 +304,7 @@ export function LibraryClient({ items: initialItems }: LibraryClientProps) {
                       {(item.story.ratingAverage ?? 0).toFixed(1)}
                     </span>
                   )}
-                  <span>Updated {formatDistanceToNow(new Date(item.story.updatedAt))} ago</span>
+                  <span className="whitespace-nowrap">Updated {formatDistanceToNow(new Date(item.story.updatedAt))} ago</span>
                 </div>
 
                 {/* Progress bar */}

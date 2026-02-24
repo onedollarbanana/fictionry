@@ -113,7 +113,7 @@ export function StoryCardCompact({ story, rank, showRank = false }: StoryCardCom
           ) : null}
           
           {/* Stats Row */}
-          <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-auto pt-2 border-t">
+          <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-auto pt-2 border-t">
             <span className="flex items-center gap-0.5" title="Chapters">
               <BookOpen className="w-3 h-3" />
               {story.chapter_count ?? 0}
