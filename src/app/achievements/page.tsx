@@ -5,13 +5,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Trophy, BookOpen, Pen, Users, TrendingUp, Award, Sparkles } from 'lucide-react'
-import { AchievementGrid } from '@/components/achievements'
-import type { AchievementDefinition, UserAchievement, AchievementCategory } from '@/components/achievements/types'
+import { AchievementGrid, RecentlyUnlocked, StreakCard } from '@/components/achievements'
+import type { AchievementDefinition, UserAchievement, AchievementCategory, UserStatsMap, StreakInfo } from '@/components/achievements/types'
+import { ExperienceCard } from '@/components/experience/experience-card'
+import type { ExperienceData } from '@/components/experience/types'
 import { BadgeSelectorClient } from './badge-selector-client'
+import { getRecentlyUnlocked } from '@/lib/achievements'
 
 export const metadata: Metadata = {
   title: 'Achievements | Fictionry',
-  description: 'View your achievements and select badges to display on your profile'
+  description: 'View your achievements and select badges to display on your profile',
 }
 
 const categoryIcons: Record<AchievementCategory, typeof Trophy> = {
@@ -34,66 +37,86 @@ const categoryLabels: Record<AchievementCategory, string> = {
 
 export default async function AchievementsPage() {
   const supabase = await createClient()
-  
+
   // Check if user is logged in
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   if (!user) {
     redirect('/login')
   }
 
-  // Get all achievements
-  const { data: allAchievementsResult } = await supabase.rpc('get_all_achievements')
-  const allAchievements: AchievementDefinition[] = (allAchievementsResult as AchievementDefinition[]) || []
+  // ---- Parallel data fetching ----
+  const [
+    { data: allAchievementsResult },
+    { data: userAchievementsResult },
+    { data: featuredBadgesResult },
+    { data: userStatsResult },
+    { data: experienceResult },
+  ] = await Promise.all([
+    supabase.rpc('get_all_achievements'),
+    supabase.rpc('get_user_achievements', { target_user_id: user.id }),
+    supabase.rpc('get_featured_badges', { target_user_id: user.id }),
+    supabase.rpc('get_user_stats_full', { p_user_id: user.id }),
+    supabase.rpc('get_user_experience', { target_user_id: user.id }),
+  ])
 
-  // Get user's unlocked achievements
-  const { data: userAchievementsResult } = await supabase
-    .rpc('get_user_achievements', { target_user_id: user.id })
-  const userAchievements: UserAchievement[] = (userAchievementsResult as UserAchievement[]) || []
-
-  // Get user's featured badges
-  const { data: featuredBadgesResult } = await supabase
-    .rpc('get_featured_badges', { target_user_id: user.id })
+  const allAchievements: AchievementDefinition[] =
+    (allAchievementsResult as AchievementDefinition[]) || []
+  const userAchievements: UserAchievement[] =
+    (userAchievementsResult as UserAchievement[]) || []
   const featuredBadges = (featuredBadgesResult as { achievementId: string }[]) || []
   const featuredBadgeIds = featuredBadges.map(fb => fb.achievementId)
+  const userStats: UserStatsMap | null = (userStatsResult as UserStatsMap) ?? null
+  const experience: ExperienceData | null = (experienceResult as ExperienceData) ?? null
 
-  // Get user stats for progress tracking
-  const { data: userStatsResult } = await supabase
-    .rpc('get_user_stats', { target_user_id: user.id })
-  const userStats = userStatsResult as {
-    commentCount: number
-    reviewCount: number
-    totalWords: number
-    followerCount: number
-    totalViews: number
-    accountAgeDays: number
-  } | null
+  // ---- Streaks ----
+  const streaks: StreakInfo = {
+    readingCurrent: userStats?.reading_streak ?? 0,
+    readingLongest: userStats?.reading_longest_streak ?? 0,
+    publishingCurrent: userStats?.publishing_streak ?? 0,
+    publishingLongest: userStats?.publishing_longest_streak ?? 0,
+  }
 
-  // Calculate stats per category
-  const categories: AchievementCategory[] = ['reading', 'writing', 'social', 'popularity', 'rankings', 'special']
+  // ---- Recently unlocked ----
+  const recentlyUnlocked = getRecentlyUnlocked(userAchievements, 5)
+
+  // ---- Category stats ----
+  const categories: AchievementCategory[] = [
+    'reading',
+    'writing',
+    'social',
+    'popularity',
+    'rankings',
+    'special',
+  ]
   const categoryStats = categories.map(cat => {
     const total = allAchievements.filter(a => a.category === cat).length
-    const unlocked = userAchievements.filter(ua => 
-      allAchievements.find(a => a.id === ua.achievementId)?.category === cat
+    const unlocked = userAchievements.filter(ua =>
+      allAchievements.find(a => a.id === ua.achievementId)?.category === cat,
     ).length
     return {
       category: cat,
       total,
       unlocked,
-      percentage: total > 0 ? Math.round((unlocked / total) * 100) : 0
+      percentage: total > 0 ? Math.round((unlocked / total) * 100) : 0,
     }
   })
 
   const totalUnlocked = userAchievements.length
   const totalAchievements = allAchievements.length
-  const overallPercentage = totalAchievements > 0 
-    ? Math.round((totalUnlocked / totalAchievements) * 100) 
-    : 0
+  const overallPercentage =
+    totalAchievements > 0
+      ? Math.round((totalUnlocked / totalAchievements) * 100)
+      : 0
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
+      <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
+        {/* =========================================================
+            1. Page Header
+        ========================================================= */}
+        <div>
           <h1 className="text-3xl font-bold flex items-center gap-3">
             <Trophy className="h-8 w-8 text-yellow-500" />
             Achievements
@@ -103,17 +126,32 @@ export default async function AchievementsPage() {
           </p>
         </div>
 
-        {/* Overall Progress Card */}
-        <Card className="mb-8 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border-0">
+        {/* =========================================================
+            2. XP & Level Card
+        ========================================================= */}
+        <ExperienceCard experience={experience} />
+
+        {/* =========================================================
+            3. Streak Section
+        ========================================================= */}
+        <StreakCard streaks={streaks} />
+
+        {/* =========================================================
+            4. Recently Unlocked
+        ========================================================= */}
+        <RecentlyUnlocked achievements={recentlyUnlocked} />
+
+        {/* =========================================================
+            5. Overall Progress
+        ========================================================= */}
+        <Card className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border-0">
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div>
                 <h2 className="text-2xl font-bold">
                   {totalUnlocked} / {totalAchievements} Achievements
                 </h2>
-                <p className="text-muted-foreground">
-                  {overallPercentage}% complete
-                </p>
+                <p className="text-muted-foreground">{overallPercentage}% complete</p>
               </div>
               <div className="w-full md:w-64">
                 <Progress value={overallPercentage} className="h-3" />
@@ -138,12 +176,14 @@ export default async function AchievementsPage() {
           </CardContent>
         </Card>
 
-        {/* Featured Badges Section */}
-        <Card className="mb-8">
+        {/* =========================================================
+            6. Featured Badges
+        ========================================================= */}
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span>Featured Badges</span>
-              <BadgeSelectorClient 
+              <BadgeSelectorClient
                 userAchievements={userAchievements}
                 featuredBadgeIds={featuredBadgeIds}
               />
@@ -154,9 +194,11 @@ export default async function AchievementsPage() {
           </CardHeader>
         </Card>
 
-        {/* Achievement Tabs by Category */}
+        {/* =========================================================
+            7. Category Tabs
+        ========================================================= */}
         <Tabs defaultValue="all" className="space-y-6">
-          <TabsList className="bg-zinc-100 dark:bg-zinc-800 p-1">
+          <TabsList className="bg-zinc-100 dark:bg-zinc-800 p-1 flex flex-wrap h-auto gap-1">
             <TabsTrigger value="all">
               All ({totalUnlocked}/{totalAchievements})
             </TabsTrigger>
@@ -171,8 +213,8 @@ export default async function AchievementsPage() {
             <AchievementGrid
               achievements={allAchievements}
               userAchievements={userAchievements}
-              userStats={userStats || undefined}
-              showLocked={true}
+              userStats={userStats}
+              showLocked
             />
           </TabsContent>
 
@@ -181,9 +223,9 @@ export default async function AchievementsPage() {
               <AchievementGrid
                 achievements={allAchievements}
                 userAchievements={userAchievements}
-                userStats={userStats || undefined}
+                userStats={userStats}
                 category={cat}
-                showLocked={true}
+                showLocked
               />
             </TabsContent>
           ))}

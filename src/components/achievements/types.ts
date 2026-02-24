@@ -46,3 +46,18 @@ export interface FeaturedBadge {
   displayOrder: number
   achievement: AchievementDefinition
 }
+
+// ---------------------------------------------------------------------------
+// NEW Phase 5 types
+// ---------------------------------------------------------------------------
+
+/** Stats returned by `get_user_stats_full()` as a flat JSONB object */
+export type UserStatsMap = Record<string, number>
+
+/** Streak information derived from UserStatsMap */
+export interface StreakInfo {
+  readingCurrent: number
+  readingLongest: number
+  publishingCurrent: number
+  publishingLongest: number
+}

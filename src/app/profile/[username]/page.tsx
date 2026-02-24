@@ -24,7 +24,8 @@ import { ExperienceBadge } from '@/components/experience/experience-badge'
 import { ExperienceCard } from '@/components/experience/experience-card'
 import type { ExperienceData } from '@/components/experience/types'
 import { AchievementBadge } from '@/components/achievements/achievement-badge'
-import type { FeaturedBadge } from '@/components/achievements/types'
+import { StreakInline } from '@/components/achievements/streak-display'
+import type { FeaturedBadge, UserStatsMap, StreakInfo } from '@/components/achievements/types'
 import { ProfileBorder } from '@/components/profile/profile-border'
 import { ReportButton } from '@/components/moderation/report-button'
 import { PremiumBadge } from '@/components/premium-badge'
@@ -227,6 +228,20 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
   const achievements: AchievementItem[] = achievementsData || []
   const unlockedCount = achievements.filter((item) => item.unlockedAt).length
 
+  // Get full user stats for streak display
+  const { data: fullStatsData } = await supabase
+    .rpc('get_user_stats_full', { p_user_id: profile.id })
+  
+  const fullStats: UserStatsMap | null = (fullStatsData as UserStatsMap) ?? null
+
+  // Build streak info
+  const streaks: StreakInfo = {
+    readingCurrent: fullStats?.reading_streak ?? 0,
+    readingLongest: fullStats?.reading_longest_streak ?? 0,
+    publishingCurrent: fullStats?.publishing_streak ?? 0,
+    publishingLongest: fullStats?.publishing_longest_streak ?? 0,
+  }
+
   // Get user's equipped border
   let equippedBorder = null
   if (profile.equipped_border_id) {
@@ -338,11 +353,17 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
               {profile.bio && (
                 <p className="text-sm mb-3">{profile.bio}</p>
               )}
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
                 <span className="flex items-center gap-1">
                   <CalendarDays className="h-4 w-4" />
                   Joined {formatDistanceToNow(new Date(profile.created_at), { addSuffix: true })}
                 </span>
+                {unlockedCount > 0 && (
+                  <span className="flex items-center gap-1">
+                    <Trophy className="h-4 w-4 text-yellow-500" />
+                    {unlockedCount} achievement{unlockedCount !== 1 ? 's' : ''}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -369,6 +390,9 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Streak Display — shown between header and stats grid */}
+      <StreakInline streaks={streaks} />
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
