@@ -27,11 +27,20 @@ export const metadata: Metadata = {
     description: 'A modern platform for web fiction authors and readers',
     type: 'website',
     siteName: 'Fictionry',
+    images: [
+      {
+        url: '/og-default.png',
+        width: 1200,
+        height: 630,
+        alt: 'Fictionry — The Modern Way to Read and Write Fiction',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Fictionry - The Modern Way to Read and Write Fiction',
     description: 'A modern platform for web fiction authors and readers',
+    images: ['/og-default.png'],
   },
   manifest: '/manifest.json',
   appleWebApp: {

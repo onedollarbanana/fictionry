@@ -42,9 +42,37 @@ interface ProfilePageProps {
 export async function generateMetadata({ params }: ProfilePageProps): Promise<Metadata> {
   const { username } = await params
   const decodedUsername = decodeURIComponent(username)
+  const supabase = await createClient()
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('display_name, bio')
+    .eq('username', decodedUsername)
+    .single()
+
+  const displayName = profile?.display_name || decodedUsername
+  const description = profile?.bio
+    ? `${profile.bio.slice(0, 155)}${profile.bio.length > 155 ? '…' : ''}`
+    : `View ${displayName}'s stories, library, and activity on Fictionry`
+
   return {
-    title: `${decodedUsername}'s Profile | Fictionry`,
-    description: `View ${decodedUsername}'s stories, library, and activity on Fictionry`
+    title: `${displayName}'s Profile | Fictionry`,
+    description,
+    openGraph: {
+      title: `${displayName}'s Profile | Fictionry`,
+      description,
+      type: 'profile',
+      url: `/profile/${username}`,
+      username: decodedUsername,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${displayName}'s Profile | Fictionry`,
+      description,
+    },
+    alternates: {
+      canonical: `/profile/${username}`,
+    },
   }
 }
 
@@ -330,8 +358,29 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
     reviewCount: reviews?.length || 0 
   })
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ProfilePage",
+    mainEntity: {
+      "@type": "Person",
+      name: profile.display_name || profile.username,
+      alternateName: profile.username,
+      description: profile.bio || undefined,
+      url: `https://www.fictionry.com/profile/${profile.username}`,
+      interactionStatistic: {
+        "@type": "InteractionCounter",
+        interactionType: "https://schema.org/WriteAction",
+        userInteractionCount: stories?.length || 0,
+      },
+    },
+  }
+
   return (
     <main className="max-w-6xl mx-auto px-4 py-8 space-y-8">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* Profile Header */}
       <Card>
         <CardContent className="pt-6">

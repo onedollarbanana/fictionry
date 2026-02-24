@@ -18,8 +18,28 @@ import { StoryCarousel } from "@/components/home/story-carousel";
 import { PersonalizedShelves } from "@/components/home/personalized-shelves";
 import { PersonalizedSkeleton } from "@/components/home/personalized-skeleton";
 import { Rocket, Clock, Heart, Sparkles, Award, Trophy, Sword, Search, Skull, Gamepad2, Scroll, TrendingUp, Flame } from "lucide-react";
+import type { Metadata } from "next";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+
+export const metadata: Metadata = {
+  title: "Fictionry — The Modern Way to Read and Write Fiction",
+  description:
+    "Discover thousands of free stories across every genre, or publish your own. Fictionry is the modern platform for readers and writers of fiction.",
+  openGraph: {
+    title: "Fictionry — The Modern Way to Read and Write Fiction",
+    description:
+      "Discover thousands of free stories across every genre, or publish your own. Fictionry is the modern platform for readers and writers of fiction.",
+    type: "website",
+    siteName: "Fictionry",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Fictionry — The Modern Way to Read and Write Fiction",
+    description:
+      "Discover thousands of free stories across every genre, or publish your own. Fictionry is the modern platform for readers and writers of fiction.",
+  },
+};
 
 export default async function Home() {
   // Create a single Supabase client for all queries
@@ -84,8 +104,30 @@ export default async function Home() {
 
   const isLoggedIn = !!user;
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "Fictionry",
+    url: "https://www.fictionry.com",
+    description:
+      "Discover thousands of free stories across every genre, or publish your own. Fictionry is the modern platform for readers and writers of fiction.",
+    potentialAction: {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate:
+          "https://www.fictionry.com/browse?q={search_term_string}",
+      },
+      "query-input": "required name=search_term_string",
+    },
+  };
+
   return (
     <div className="bg-background min-h-screen">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <main className="container mx-auto px-4 py-8">
         {/* Announcement Banner */}
         <AnnouncementBanner />
