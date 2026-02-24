@@ -23,7 +23,7 @@ export function DiscoveryStoryList({ stories, showRank = false }: Props) {
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <StoryCard story={story} variant="horizontal" />
+            <StoryCard story={story} variant="horizontal" expandable />
           </div>
         </div>
       ))}

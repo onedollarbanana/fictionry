@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { BookOpen, Eye, Heart, BookMarked, Clock, Star } from "lucide-react";
+import { BookOpen, Eye, Heart, BookMarked, Clock, Star, ChevronDown, ChevronUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -51,6 +52,8 @@ interface StoryCardProps {
   href?: string;
   /** Additional className */
   className?: string;
+  /** Show expand/collapse toggle for full details (horizontal only) */
+  expandable?: boolean;
   /** Render children at card bottom (e.g., action buttons) */
   children?: React.ReactNode;
   /** Hide author name in display */
@@ -118,11 +121,13 @@ export function StoryCard({
   className,
   children,
   hideAuthor = false,
+  expandable = false,
 }: StoryCardProps) {
   const primaryGenre = story.genres?.[0] || "Fantasy";
   const gradientClass = genreGradients[primaryGenre] || genreGradients.Fantasy;
   const linkHref = href || getStoryUrl(story);
   const authorUsername = getAuthorUsername(story);
+  const [expanded, setExpanded] = useState(false);
 
   // Use updated_at for cache busting, fallback to stable value
   const imageTimestamp = story.updated_at 
@@ -201,14 +206,14 @@ export function StoryCard({
 
           {/* Tagline */}
           {story.tagline && (
-            <p className="text-sm font-medium text-primary/80 mt-1 line-clamp-2">
+            <p className={`text-sm font-medium text-primary/80 mt-1 ${expandable && expanded ? "" : "line-clamp-2"}`}>
               {story.tagline}
             </p>
           )}
 
           {/* Blurb (fallback if no tagline) */}
           {!story.tagline && story.blurb && (
-            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+            <p className={`text-sm text-muted-foreground mt-1 ${expandable && expanded ? "" : "line-clamp-2"}`}>
               {story.blurb}
             </p>
           )}
@@ -216,9 +221,20 @@ export function StoryCard({
           {/* Genres */}
           {story.genres && story.genres.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
-              {story.genres.slice(0, 3).map((genre) => (
+              {(expandable && expanded ? story.genres : story.genres.slice(0, 3)).map((genre) => (
                 <Badge key={genre} variant="secondary" className="text-xs">
                   {genre}
+                </Badge>
+              ))}
+            </div>
+          )}
+
+          {/* Tags (shown when expanded) */}
+          {expandable && expanded && story.tags && story.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {story.tags.map((tag) => (
+                <Badge key={tag} variant="outline" className="text-xs">
+                  #{tag}
                 </Badge>
               ))}
             </div>
@@ -246,6 +262,21 @@ export function StoryCard({
               </span>
             )}
           </div>
+
+          {/* Expand/Collapse toggle */}
+          {expandable && (
+            <button
+              type="button"
+              onClick={() => setExpanded(!expanded)}
+              className="flex items-center gap-1 mt-2 text-xs text-muted-foreground hover:text-primary transition-colors"
+            >
+              {expanded ? (
+                <>Show less <ChevronUp className="h-3 w-3" /></>
+              ) : (
+                <>Show more <ChevronDown className="h-3 w-3" /></>
+              )}
+            </button>
+          )}
 
           {/* Optional action buttons slot */}
           {children && <div className="mt-3">{children}</div>}

@@ -29,7 +29,7 @@ import { ProfileBorder } from '@/components/profile/profile-border'
 import { ReportButton } from '@/components/moderation/report-button'
 import { PremiumBadge } from '@/components/premium-badge'
 import { getStoryUrl } from '@/lib/url-utils'
-import { ProfileTierSection } from '@/components/profile/profile-tier-section'
+import { AuthorTierCards } from '@/components/story/author-tier-cards'
 
 export const revalidate = 120
 
@@ -399,13 +399,13 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
       </div>
 
       {/* Author Tier Subscriptions */}
-      {authorTiers && authorTiers.length > 0 && (
-        <ProfileTierSection
+      {authorTiers && authorTiers.length > 0 && !isOwnProfile && (
+        <AuthorTierCards
           authorId={profile.id}
-          authorUsername={profile.display_name || profile.username}
-          tiers={authorTiers}
+          authorName={profile.display_name || profile.username}
+          tiers={authorTiers.map((t: any) => ({ ...t, advance_chapter_count: 0 }))}
           currentSubscription={currentAuthorSub}
-          isOwnProfile={isOwnProfile}
+          isLoggedIn={!!currentUser}
         />
       )}
 

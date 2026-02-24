@@ -42,6 +42,7 @@ export default async function Home() {
     cover_url: string | null;
     chapter_number: number;
     total_chapters: number;
+    continue_chapter_number: number;
     next_chapter_id: string | null;
     next_chapter_slug: string | null;
     next_chapter_short_id: string | null;
@@ -86,6 +87,7 @@ export default async function Home() {
       .from("reading_progress")
       .select(`
         story_id,
+        chapter_id,
         chapter_number,
         stories (
           id,
@@ -108,6 +110,20 @@ export default async function Home() {
     if (progressData && progressData.length > 0) {
       // Get next chapter IDs for each story
       const storyIds = progressData.map((p: any) => p.story_id);
+
+      // Fetch which chapters the user has marked as read
+      const { data: userReads } = await supabase
+        .from('chapter_reads')
+        .select('chapter_id')
+        .eq('user_id', user.id)
+        .in('story_id', storyIds);
+
+      const readChapterIds = new Set<string>();
+      if (userReads) {
+        for (const read of userReads as any[]) {
+          readChapterIds.add(read.chapter_id);
+        }
+      }
 
       // Fetch next chapters
       const { data: nextChapters } = await supabase
@@ -140,8 +156,13 @@ export default async function Home() {
           const story = Array.isArray(p.stories) ? p.stories[0] : p.stories;
           const profile = story?.profiles;
           const authorName = Array.isArray(profile) ? profile[0]?.username : profile?.username;
-          const nextChapterNum = p.chapter_number + 1;
-          const nextChapterInfo = nextChapterMap.get(`${p.story_id}-${nextChapterNum}`) || null;
+          // Determine if user is mid-chapter or finished
+          const currentChapterId = p.chapter_id;
+          const isMidRead = currentChapterId ? !readChapterIds.has(currentChapterId) : false;
+          const continueChapterNum = isMidRead ? p.chapter_number : p.chapter_number + 1;
+          const continueChapterInfo = isMidRead
+            ? nextChapterMap.get(`${p.story_id}-${p.chapter_number}`) || null
+            : nextChapterMap.get(`${p.story_id}-${p.chapter_number + 1}`) || null;
           return {
             story_id: p.story_id,
             story_slug: story?.slug || null,
@@ -150,9 +171,10 @@ export default async function Home() {
             cover_url: story?.cover_url || null,
             chapter_number: p.chapter_number,
             total_chapters: story?.chapter_count || 0,
-            next_chapter_id: nextChapterInfo?.id || null,
-            next_chapter_slug: nextChapterInfo?.slug || null,
-            next_chapter_short_id: nextChapterInfo?.short_id || null,
+            continue_chapter_number: continueChapterNum,
+            next_chapter_id: continueChapterInfo?.id || null,
+            next_chapter_slug: continueChapterInfo?.slug || null,
+            next_chapter_short_id: continueChapterInfo?.short_id || null,
             author_name: authorName || "Unknown",
             updated_at: story?.updated_at || new Date().toISOString(),
           };

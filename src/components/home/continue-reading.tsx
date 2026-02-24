@@ -15,6 +15,7 @@ interface ReadingItem {
   cover_url: string | null;
   chapter_number: number;
   total_chapters: number;
+  continue_chapter_number: number;
   next_chapter_id: string | null;
   next_chapter_slug: string | null;
   next_chapter_short_id: string | null;
@@ -207,7 +208,7 @@ export function ContinueReading({ items }: ContinueReadingProps) {
                   >
                     <Button size="sm" className="w-full h-7 text-xs">
                       <Play className="h-3 w-3 mr-1" />
-                      Continue Ch. {item.chapter_number + 1}
+                      Continue Ch. {item.continue_chapter_number}
                     </Button>
                   </Link>
                 </div>
