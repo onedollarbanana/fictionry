@@ -69,13 +69,12 @@ export async function RelatedStories({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-3">
           {typedStories.map((story) => (
             <StoryCard
               key={story.id}
               story={story}
-              variant="vertical"
-              size="sm"
+              variant="horizontal"
             />
           ))}
         </div>

@@ -179,7 +179,7 @@ export function StoryCard({
               
               {!hideAuthor && (authorUsername ? (
                 <Link 
-                  href={`/author/${authorUsername}`}
+                  href={`/profile/${authorUsername}`}
                   className="text-sm text-muted-foreground hover:text-primary transition-colors"
                 >
                   by {getAuthorName(story)}

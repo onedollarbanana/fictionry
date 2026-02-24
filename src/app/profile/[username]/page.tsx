@@ -29,6 +29,7 @@ import { ProfileBorder } from '@/components/profile/profile-border'
 import { ReportButton } from '@/components/moderation/report-button'
 import { PremiumBadge } from '@/components/premium-badge'
 import { getStoryUrl } from '@/lib/url-utils'
+import { ProfileTierSection } from '@/components/profile/profile-tier-section'
 
 export const revalidate = 120
 
@@ -249,6 +250,27 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
     }
   }
 
+  // Get author's tier configuration
+  const { data: authorTiers } = await supabase
+    .from('author_tiers')
+    .select('tier_name, description')
+    .eq('author_id', profile.id)
+    .eq('enabled', true)
+    .order('tier_name')
+
+  // Get current user's subscription to this author
+  let currentAuthorSub = null
+  if (currentUser && !isOwnProfile) {
+    const { data: subData } = await supabase
+      .from('author_subscriptions')
+      .select('tier_name, status')
+      .eq('subscriber_id', currentUser.id)
+      .eq('author_id', profile.id)
+      .eq('status', 'active')
+      .single()
+    currentAuthorSub = subData
+  }
+
   // Calculate stats
   const totalViews = stories?.reduce((sum, story) => sum + (story.total_views || 0), 0) || 0
   const totalChapters = stories?.reduce((sum, story) => sum + (story.chapter_count || 0), 0) || 0
@@ -376,6 +398,17 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
         />
       </div>
 
+      {/* Author Tier Subscriptions */}
+      {authorTiers && authorTiers.length > 0 && (
+        <ProfileTierSection
+          authorId={profile.id}
+          authorUsername={profile.display_name || profile.username}
+          tiers={authorTiers}
+          currentSubscription={currentAuthorSub}
+          isOwnProfile={isOwnProfile}
+        />
+      )}
+
       {/* Tabbed Content */}
       <Tabs defaultValue="activity" className="space-y-6">
         <TabsList className="grid w-full grid-cols-5">
@@ -479,7 +512,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
                       <div className="flex-1 min-w-0">
                         <Link 
                           href={getStoryUrl(story)}
-                          className="font-semibold hover:text-primary transition-colors line-clamp-1"
+                          className="font-semibold hover:text-primary transition-colors line-clamp-1 break-all"
                         >
                           {story.title}
                         </Link>
@@ -497,7 +530,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
                           </span>
                         </div>
                         {story.blurb && (
-                          <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+                          <p className="text-sm text-muted-foreground mt-2 line-clamp-2 break-words">
                             {story.blurb}
                           </p>
                         )}

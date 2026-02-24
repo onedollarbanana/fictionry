@@ -41,6 +41,16 @@ export default async function PopularPage({ searchParams }: PageProps) {
 
   if (error) console.error('Error:', error);
   const typedStories = (stories || []) as unknown as StoryCardData[];
+
+  // Normalize: sort by views per chapter for fairer ranking
+  if (sort === 'popular') {
+    typedStories.sort((a, b) => {
+      const aScore = (a.total_views || 0) / Math.max(a.chapter_count || 1, 1);
+      const bScore = (b.total_views || 0) / Math.max(b.chapter_count || 1, 1);
+      return bScore - aScore;
+    });
+  }
+
   await enrichWithCommunityPicks(typedStories, supabase);
 
   return (
@@ -49,7 +59,7 @@ export default async function PopularPage({ searchParams }: PageProps) {
         <div>
           <h1 className="text-3xl font-bold">Most Popular</h1>
           <p className="text-muted-foreground mt-1">
-            {typedStories.length} {typedStories.length === 1 ? 'story' : 'stories'}
+            Highest rated by views per chapter — fairer ranking for stories of all lengths
           </p>
         </div>
         <GenreTagSort currentSort={sort} />

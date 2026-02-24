@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { useUser } from '@/lib/hooks/useUser'
-import { Menu, X, Home, BookOpen, Bell, Pen, LogIn, LogOut, UserPlus, Library, Settings, User } from 'lucide-react'
+import { Menu, X, Home, BookOpen, Bell, Pen, LogIn, LogOut, UserPlus, Library, Settings, User, TrendingUp, Flame, Star, Award } from 'lucide-react'
 import { getUnreadCount } from '@/lib/notifications'
 
 interface MobileNavProps {
@@ -96,6 +96,49 @@ export function MobileNav({ onLogout }: MobileNavProps) {
               >
                 <BookOpen className="h-5 w-5 text-muted-foreground" />
                 <span>Browse Stories</span>
+              </Link>
+
+              <div className="my-2 border-t" />
+              <p className="px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Discover</p>
+              <Link
+                href="/rising-stars"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-muted transition-colors"
+                onClick={() => setIsOpen(false)}
+              >
+                <TrendingUp className="h-5 w-5 text-muted-foreground" />
+                <span>Rising Stars</span>
+              </Link>
+              <Link
+                href="/popular"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-muted transition-colors"
+                onClick={() => setIsOpen(false)}
+              >
+                <Flame className="h-5 w-5 text-muted-foreground" />
+                <span>Most Popular</span>
+              </Link>
+              <Link
+                href="/new-releases"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-muted transition-colors"
+                onClick={() => setIsOpen(false)}
+              >
+                <Star className="h-5 w-5 text-muted-foreground" />
+                <span>New Releases</span>
+              </Link>
+              <Link
+                href="/community-picks"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-muted transition-colors"
+                onClick={() => setIsOpen(false)}
+              >
+                <Award className="h-5 w-5 text-muted-foreground" />
+                <span>Community Picks</span>
+              </Link>
+              <Link
+                href="/genres"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-muted transition-colors"
+                onClick={() => setIsOpen(false)}
+              >
+                <BookOpen className="h-5 w-5 text-muted-foreground" />
+                <span>Genres</span>
               </Link>
               
               {user && (

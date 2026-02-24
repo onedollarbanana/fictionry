@@ -8,6 +8,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { MobileNav } from '@/components/layout/mobile-nav'
 import { Pen, Settings, LogOut, Loader2, User } from 'lucide-react'
 import { NotificationBell } from '@/components/notifications/notification-bell'
+import { DiscoverDropdown } from '@/components/layout/discover-dropdown'
 
 export function Header() {
   const { user, profile, loading } = useUser()
@@ -35,6 +36,7 @@ export function Header() {
             <Link href="/library" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Library
             </Link>
+            <DiscoverDropdown />
           </nav>
         </div>
 

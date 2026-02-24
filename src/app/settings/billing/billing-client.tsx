@@ -408,7 +408,9 @@ export function BillingClient({
                 <CardContent className="py-4 flex items-center justify-between">
                   <div>
                     <p className="font-medium">
-                      {sub.profiles?.display_name || sub.profiles?.username || 'Unknown Author'}
+                      <Link href={`/profile/${sub.profiles?.username}`} className="hover:text-primary transition-colors">
+                        {sub.profiles?.display_name || sub.profiles?.username || 'Unknown Author'}
+                      </Link>
                     </p>
                     <p className="text-sm text-muted-foreground">
                       {sub.tier_name.charAt(0).toUpperCase() + sub.tier_name.slice(1)} · ${(sub.amount_cents / 100).toFixed(2)}/mo
