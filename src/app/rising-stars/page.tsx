@@ -7,10 +7,26 @@ import { type StoryCardData } from "@/components/story/story-card";
 import { DiscoveryFilter } from "@/components/discovery/discovery-filter";
 import { DiscoveryStoryList } from "@/components/discovery/discovery-story-list";
 import { enrichWithCommunityPicks } from "@/lib/community-picks";
+import type { Metadata } from "next";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Rising Stars | Fictionry",
   description: "Stories gaining traction — ranked by engagement velocity",
+  openGraph: {
+    title: "Rising Stars | Fictionry",
+    description:
+      "Discover the hottest up-and-coming stories on Fictionry, ranked by engagement velocity.",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Rising Stars | Fictionry",
+    description:
+      "Discover the hottest up-and-coming stories on Fictionry, ranked by engagement velocity.",
+  },
+  alternates: {
+    canonical: "/rising-stars",
+  },
 };
 
 interface PageProps {

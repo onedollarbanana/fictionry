@@ -8,6 +8,28 @@ import { BrowseFilters } from "@/components/browse/browse-filters";
 import { type StoryCardData } from "@/components/story/story-card";
 import { BrowseStoryGrid } from "@/components/story/browse-story-grid";
 import { enrichWithCommunityPicks } from "@/lib/community-picks";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Browse Stories | Fictionry",
+  description:
+    "Discover fiction by genre, popularity, rating, and more. Explore thousands of stories from talented authors on Fictionry.",
+  openGraph: {
+    title: "Browse Stories | Fictionry",
+    description:
+      "Discover fiction by genre, popularity, rating, and more. Explore thousands of stories from talented authors on Fictionry.",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Browse Stories | Fictionry",
+    description:
+      "Discover fiction by genre, popularity, rating, and more. Explore thousands of stories from talented authors on Fictionry.",
+  },
+  alternates: {
+    canonical: "/browse",
+  },
+};
 
 interface SearchParams {
   search?: string;
@@ -135,8 +157,31 @@ export default async function BrowsePage({
   const hasFilters = search || genre || sort !== "updated" || tag;
   const sp = { search, genre, sort, tag, page };
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: "https://www.fictionry.com",
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Browse Stories",
+        item: "https://www.fictionry.com/browse",
+      },
+    ],
+  };
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <h1 className="text-3xl font-bold mb-6">Browse Stories</h1>
 
       <Suspense fallback={<div className="h-12 bg-muted animate-pulse rounded-md mb-6" />}>

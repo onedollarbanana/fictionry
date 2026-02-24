@@ -3,8 +3,18 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { LibraryClient } from '@/components/library/library-client'
 import { LibraryTabs } from '@/components/library/library-tabs'
+import type { Metadata } from 'next'
 
 export const dynamic = 'force-dynamic'
+
+export const metadata: Metadata = {
+  title: "My Library | Fictionry",
+  description: "Your personal reading library — track stories, reading progress, and manage your bookshelf on Fictionry.",
+  robots: {
+    index: false,
+    follow: false,
+  },
+}
 
 // Define types for the query result
 interface FollowWithStory {
