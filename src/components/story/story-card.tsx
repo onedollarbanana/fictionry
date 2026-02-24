@@ -153,9 +153,9 @@ export function StoryCard({
         className
       )}>
         {/* Cover */}
-        <Link href={linkHref} className="shrink-0 self-stretch">
+        <Link href={linkHref} className="shrink-0">
           {story.cover_url ? (
-            <div className="relative w-24 md:w-28 h-auto min-h-[7rem]">
+            <div className="relative w-24 md:w-28 aspect-[2/3]">
               <Image
                 src={`${story.cover_url}?t=${imageTimestamp}`}
                 alt={`Cover for ${story.title}`}
@@ -167,7 +167,7 @@ export function StoryCard({
             </div>
           ) : (
             <div className={cn(
-              "w-24 md:w-28 h-auto min-h-[7rem] rounded flex items-center justify-center bg-gradient-to-br",
+              "w-24 md:w-28 aspect-[2/3] rounded flex items-center justify-center bg-gradient-to-br",
               gradientClass
             )}>
               <BookOpen className="h-6 w-6 text-white/40" />
@@ -176,7 +176,7 @@ export function StoryCard({
         </Link>
 
         {/* Content */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 break-words">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
               <Link href={linkHref}>
@@ -217,14 +217,14 @@ export function StoryCard({
 
           {/* Tagline */}
           {story.tagline && (
-            <p className={`text-sm md:text-base font-medium text-primary/80 mt-1 ${expandable && expanded ? "" : "line-clamp-1"}`}>
+            <p className={`text-sm md:text-base font-medium text-primary/80 mt-1 break-words ${expandable && expanded ? "" : "line-clamp-1"}`}>
               {story.tagline}
             </p>
           )}
 
           {/* Blurb */}
           {story.blurb && (
-            <p className={`text-sm md:text-base text-muted-foreground mt-1 ${expandable && expanded ? "" : "line-clamp-2"}`}>
+            <p className={`text-sm md:text-base text-muted-foreground mt-1 whitespace-pre-line break-words ${expandable && expanded ? "" : "line-clamp-2"}`}>
               {story.blurb}
             </p>
           )}
