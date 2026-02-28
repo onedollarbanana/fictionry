@@ -6,7 +6,6 @@ import { ToastProvider } from '@/components/ui/toast'
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
 import { CookieConsent } from '@/components/cookie-consent'
-import { GenreOnboardingWrapper } from '@/components/onboarding/genre-onboarding-wrapper'
 import { OfflineIndicator } from '@/components/offline-indicator'
 import { PWAInstallPrompt } from '@/components/pwa-install-prompt'
 
@@ -86,7 +85,6 @@ export default function RootLayout({
               <Footer />
             </div>
             <CookieConsent />
-            <GenreOnboardingWrapper />
           </ToastProvider>
           <OfflineIndicator />
           <PWAInstallPrompt />
