@@ -70,6 +70,9 @@ export default function CreateProfilePage() {
       return;
     }
 
+    // Send welcome email (fire-and-forget)
+    void fetch("/api/welcome-email", { method: "POST" });
+
     // Redirect to onboarding genres instead of dashboard
     router.push("/onboarding/genres");
     router.refresh();

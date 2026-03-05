@@ -1,6 +1,9 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import { sendEmail } from '@/lib/send-email'
+import { WelcomeEmail } from '@/components/emails/welcome-email'
+import { createElement } from 'react'
 
 function generateUsername(name: string | null, email: string | null): string {
   // Try to create a username from the display name
@@ -82,6 +85,15 @@ export async function GET(request: Request) {
                 display_name: displayName,
                 avatar_url: avatarUrl,
               })
+
+            // Send welcome email (non-blocking)
+            if (user.email) {
+              void sendEmail({
+                to: user.email,
+                subject: 'Welcome to Fictionry!',
+                react: createElement(WelcomeEmail, { displayName: displayName || username }),
+              })
+            }
 
             // New OAuth user still needs onboarding (genre picker)
             return NextResponse.redirect(`${origin}/onboarding/genres`)

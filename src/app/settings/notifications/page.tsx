@@ -13,6 +13,7 @@ interface NotificationType {
   label: string
   description: string
   icon: LucideIcon
+  emailSupported?: boolean
 }
 
 interface NotificationSection {
@@ -29,6 +30,7 @@ const NOTIFICATION_SECTIONS: NotificationSection[] = [
         label: 'New Chapters',
         description: 'When a story you follow publishes a new chapter',
         icon: BookOpen,
+        emailSupported: true,
       },
     ],
   },
@@ -40,6 +42,7 @@ const NOTIFICATION_SECTIONS: NotificationSection[] = [
         label: 'Comment Replies',
         description: 'When someone replies to your comment',
         icon: MessageSquare,
+        emailSupported: true,
       },
       {
         key: 'new_comment',
@@ -52,6 +55,7 @@ const NOTIFICATION_SECTIONS: NotificationSection[] = [
         label: 'New Reviews',
         description: 'When someone reviews your story',
         icon: Star,
+        emailSupported: true,
       },
     ],
   },
@@ -69,15 +73,22 @@ const NOTIFICATION_SECTIONS: NotificationSection[] = [
         label: 'Announcements',
         description: 'Important site updates and news',
         icon: Megaphone,
+        emailSupported: true,
       },
     ],
   },
 ]
 
+// Notification types that support email
+const EMAIL_SUPPORTED_TYPES = NOTIFICATION_SECTIONS.flatMap((s) =>
+  s.types.filter((t) => t.emailSupported).map((t) => t.key)
+)
+
 export default function NotificationPreferencesPage() {
   const { user, loading: userLoading } = useUser()
   const { showToast } = useToast()
-  const [preferences, setPreferences] = useState<Record<string, boolean>>({})
+  const [inAppPrefs, setInAppPrefs] = useState<Record<string, boolean>>({})
+  const [emailPrefs, setEmailPrefs] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState(true)
   const [savingKey, setSavingKey] = useState<string | null>(null)
 
@@ -87,7 +98,7 @@ export default function NotificationPreferencesPage() {
     const { data, error } = await supabase
       .from('notification_preferences')
       .select('notification_type, channel, enabled')
-      .eq('channel', 'in_app')
+      .in('channel', ['in_app', 'email'])
 
     if (error) {
       showToast('Failed to load preferences', 'error')
@@ -95,20 +106,45 @@ export default function NotificationPreferencesPage() {
       return
     }
 
-    const prefs: Record<string, boolean> = {}
+    const inApp: Record<string, boolean> = {}
+    const email: Record<string, boolean> = {}
+
     // Default all to true
     NOTIFICATION_SECTIONS.forEach((section) =>
       section.types.forEach((t) => {
-        prefs[t.key] = true
+        inApp[t.key] = true
+        if (t.emailSupported) email[t.key] = true
       })
     )
+
     // Override with saved values
     if (data) {
-      data.forEach((row: { notification_type: string; enabled: boolean }) => {
-        prefs[row.notification_type] = row.enabled
+      data.forEach((row: { notification_type: string; channel: string; enabled: boolean }) => {
+        if (row.channel === 'in_app') inApp[row.notification_type] = row.enabled
+        if (row.channel === 'email') email[row.notification_type] = row.enabled
       })
     }
-    setPreferences(prefs)
+
+    // Seed default email prefs for email-supported types that have no row yet
+    const existingEmailTypes = new Set(
+      (data || []).filter((r) => r.channel === 'email').map((r) => r.notification_type)
+    )
+    const missingTypes = EMAIL_SUPPORTED_TYPES.filter((t) => !existingEmailTypes.has(t))
+    if (missingTypes.length > 0) {
+      await supabase.from('notification_preferences').upsert(
+        missingTypes.map((t) => ({
+          user_id: user.id,
+          notification_type: t,
+          channel: 'email',
+          enabled: true,
+          updated_at: new Date().toISOString(),
+        })),
+        { onConflict: 'user_id,notification_type,channel', ignoreDuplicates: true }
+      )
+    }
+
+    setInAppPrefs(inApp)
+    setEmailPrefs(email)
     setLoading(false)
   }, [user, showToast])
 
@@ -120,20 +156,26 @@ export default function NotificationPreferencesPage() {
     }
   }, [userLoading, user, loadPreferences])
 
-  async function togglePreference(type: string) {
+  async function togglePreference(type: string, channel: 'in_app' | 'email') {
     if (!user || savingKey) return
-    const newValue = !preferences[type]
+    const currentValue = channel === 'in_app' ? (inAppPrefs[type] ?? true) : (emailPrefs[type] ?? true)
+    const newValue = !currentValue
+    const saveKey = `${type}_${channel}`
 
     // Optimistic update
-    setPreferences((prev) => ({ ...prev, [type]: newValue }))
-    setSavingKey(type)
+    if (channel === 'in_app') {
+      setInAppPrefs((prev) => ({ ...prev, [type]: newValue }))
+    } else {
+      setEmailPrefs((prev) => ({ ...prev, [type]: newValue }))
+    }
+    setSavingKey(saveKey)
 
     const supabase = createClient()
     const { error } = await supabase.from('notification_preferences').upsert(
       {
         user_id: user.id,
         notification_type: type,
-        channel: 'in_app',
+        channel,
         enabled: newValue,
         updated_at: new Date().toISOString(),
       },
@@ -142,7 +184,11 @@ export default function NotificationPreferencesPage() {
 
     if (error) {
       // Revert on error
-      setPreferences((prev) => ({ ...prev, [type]: !newValue }))
+      if (channel === 'in_app') {
+        setInAppPrefs((prev) => ({ ...prev, [type]: currentValue }))
+      } else {
+        setEmailPrefs((prev) => ({ ...prev, [type]: currentValue }))
+      }
       showToast('Failed to save preference', 'error')
     } else {
       showToast('Preference saved', 'success')
@@ -175,14 +221,22 @@ export default function NotificationPreferencesPage() {
         </p>
       </div>
 
+      {/* Column headers */}
+      <div className="flex items-center justify-end gap-8 pr-4 text-xs text-muted-foreground font-medium uppercase tracking-wide">
+        <span className="w-11 text-center">In-app</span>
+        <span className="w-11 text-center">Email</span>
+      </div>
+
       {NOTIFICATION_SECTIONS.map((section) => (
         <div key={section.title} className="space-y-3">
           <h3 className="text-lg font-semibold border-b pb-2">{section.title}</h3>
           <div className="space-y-2">
             {section.types.map((type) => {
               const Icon = type.icon
-              const enabled = preferences[type.key] ?? true
-              const isSaving = savingKey === type.key
+              const inAppEnabled = inAppPrefs[type.key] ?? true
+              const emailEnabled = emailPrefs[type.key] ?? true
+              const isSavingInApp = savingKey === `${type.key}_in_app`
+              const isSavingEmail = savingKey === `${type.key}_email`
 
               return (
                 <Card key={type.key}>
@@ -197,43 +251,69 @@ export default function NotificationPreferencesPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 shrink-0 ml-4">
+                    <div className="flex items-center gap-6 shrink-0 ml-4">
                       {/* In-App toggle */}
                       <button
                         type="button"
                         role="switch"
-                        aria-checked={enabled}
-                        disabled={isSaving}
-                        onClick={() => togglePreference(type.key)}
+                        aria-checked={inAppEnabled}
+                        aria-label={`${type.label} in-app notifications`}
+                        disabled={isSavingInApp}
+                        onClick={() => togglePreference(type.key, 'in_app')}
                         className={`
                           relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full
                           border-2 border-transparent transition-colors duration-200 ease-in-out
                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
                           disabled:cursor-not-allowed disabled:opacity-50
-                          ${enabled ? 'bg-primary' : 'bg-muted'}
+                          ${inAppEnabled ? 'bg-primary' : 'bg-muted'}
                         `}
                       >
                         <span
                           className={`
                             pointer-events-none inline-block h-5 w-5 transform rounded-full
                             bg-background shadow-lg ring-0 transition duration-200 ease-in-out
-                            ${enabled ? 'translate-x-5' : 'translate-x-0'}
+                            ${inAppEnabled ? 'translate-x-5' : 'translate-x-0'}
                           `}
                         />
                       </button>
 
-                      {/* Email column - coming soon */}
-                      <div className="relative group">
-                        <div className="flex items-center gap-1 opacity-40 cursor-not-allowed">
-                          <span className="text-xs text-muted-foreground">Email</span>
-                          <div className="relative inline-flex h-6 w-11 shrink-0 rounded-full bg-muted border-2 border-transparent">
-                            <span className="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-background shadow-lg ring-0 translate-x-0" />
+                      {/* Email toggle */}
+                      {type.emailSupported ? (
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={emailEnabled}
+                          aria-label={`${type.label} email notifications`}
+                          disabled={isSavingEmail}
+                          onClick={() => togglePreference(type.key, 'email')}
+                          className={`
+                            relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full
+                            border-2 border-transparent transition-colors duration-200 ease-in-out
+                            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
+                            disabled:cursor-not-allowed disabled:opacity-50
+                            ${emailEnabled ? 'bg-primary' : 'bg-muted'}
+                          `}
+                        >
+                          <span
+                            className={`
+                              pointer-events-none inline-block h-5 w-5 transform rounded-full
+                              bg-background shadow-lg ring-0 transition duration-200 ease-in-out
+                              ${emailEnabled ? 'translate-x-5' : 'translate-x-0'}
+                            `}
+                          />
+                        </button>
+                      ) : (
+                        <div className="relative group w-11">
+                          <div className="flex items-center justify-center opacity-30 cursor-not-allowed">
+                            <div className="relative inline-flex h-6 w-11 shrink-0 rounded-full bg-muted border-2 border-transparent">
+                              <span className="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-background shadow-lg ring-0 translate-x-0" />
+                            </div>
+                          </div>
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-popover text-popover-foreground text-xs rounded shadow-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap border">
+                            Not available
                           </div>
                         </div>
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-popover text-popover-foreground text-xs rounded shadow-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap border">
-                          Coming soon
-                        </div>
-                      </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

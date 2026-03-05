@@ -1,5 +1,9 @@
 import { getChapterUrl } from "@/lib/url-utils";
 import { createAdminClient } from '@/lib/supabase-admin';
+import { sendEmail } from '@/lib/send-email';
+import { createNotification } from '@/lib/create-notification';
+import { NewChapterEmail } from '@/components/emails/new-chapter-email';
+import { createElement } from 'react';
 
 // Lazy initialization for web-push (same pattern as Stripe)
 let webpushInitialized = false;
@@ -317,7 +321,112 @@ export async function notifyFollowers(
     }
   }
 
+  // Send chapter emails (non-blocking, runs in background)
+  void sendChapterEmails({
+    supabase,
+    followerIds,
+    storyId,
+    storyTitle,
+    chapterTitle,
+    chapterNumber,
+    tierTargets,
+    userTierMap,
+    story,
+  });
+
   return { sent, failed };
+}
+
+async function sendChapterEmails({
+  supabase,
+  followerIds,
+  storyId,
+  storyTitle,
+  chapterTitle,
+  chapterNumber,
+  tierTargets,
+  userTierMap,
+  story,
+}: {
+  supabase: ReturnType<typeof createAdminClient>;
+  followerIds: string[];
+  storyId: string;
+  storyTitle: string;
+  chapterTitle: string;
+  chapterNumber: number;
+  tierTargets: Map<number, { chapterNumber: number; chapterTitle: string; chapterId: string; slug: string | null; shortId: string | null }>;
+  userTierMap: Map<string, number>;
+  story: { author_id: string; slug: string; short_id: string };
+}) {
+  try {
+    // Get author profile for display name
+    const { data: authorProfile } = await supabase
+      .from('profiles')
+      .select('username, display_name')
+      .eq('id', story.author_id)
+      .maybeSingle();
+    const authorName = authorProfile?.display_name || authorProfile?.username || 'The author';
+
+    // Get follower profiles + emails in batch
+    const { data: followerProfiles } = await supabase
+      .from('profiles')
+      .select('id, username, display_name')
+      .in('id', followerIds);
+
+    const profileMap = new Map(
+      (followerProfiles ?? []).map((p) => [p.id, p])
+    );
+
+    // Fetch emails via auth admin in batch (process sequentially to avoid hammering)
+    for (const followerId of followerIds) {
+      try {
+        const userTierLevel = userTierMap.get(followerId) ?? 0;
+        let target: { chapterNumber: number; chapterTitle: string; shortId: string | null } | undefined;
+        for (let level = userTierLevel; level >= 0; level--) {
+          target = tierTargets.get(level);
+          if (target) break;
+        }
+        if (!target) continue;
+
+        const { data: authUser } = await supabase.auth.admin.getUserById(followerId);
+        const email = authUser?.user?.email;
+        if (!email) continue;
+
+        const profile = profileMap.get(followerId);
+        const readerName = profile?.display_name || profile?.username || 'Reader';
+        const chapterShortId = target.shortId ?? '';
+        const chapterUrl = `https://www.fictionry.com/story/${story.slug}/chapter/${chapterShortId}`;
+
+        // Create in-app notification
+        const notification = await createNotification({
+          user_id: followerId,
+          type: 'new_chapter',
+          title: `New chapter: ${storyTitle}`,
+          message: `Chapter ${target.chapterNumber}: ${target.chapterTitle}`,
+          link: chapterUrl,
+        });
+
+        void sendEmail({
+          to: email,
+          subject: `New chapter: ${storyTitle} — Chapter ${target.chapterNumber}`,
+          react: createElement(NewChapterEmail, {
+            readerName,
+            storyTitle,
+            chapterTitle: target.chapterTitle,
+            authorName,
+            chapterUrl,
+          }),
+          notificationId: notification?.id,
+          userId: followerId,
+          notificationType: 'new_chapter',
+        });
+      } catch (err) {
+        console.error(`[sendChapterEmails] Error for follower ${followerId}:`, err);
+      }
+    }
+  } catch (err) {
+    console.error('[sendChapterEmails] Error:', err);
+  }
 }
 
 /**
