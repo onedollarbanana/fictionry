@@ -34,7 +34,11 @@ export const metadata: Metadata = {
 
 interface SearchParams {
   search?: string;
+  q?: string;
   genre?: string;
+  subgenre?: string;
+  rating?: string;
+  format?: string;
   sort?: string;
   tag?: string;
   page?: string;
@@ -44,8 +48,11 @@ const PAGE_SIZE = 40;
 
 function buildPageUrl(searchParams: SearchParams, page: number): string {
   const params = new URLSearchParams();
-  if (searchParams.search) params.set("q", searchParams.search);
+  if (searchParams.q) params.set("q", searchParams.q);
   if (searchParams.genre) params.set("genre", searchParams.genre);
+  if (searchParams.subgenre) params.set("subgenre", searchParams.subgenre);
+  if (searchParams.rating) params.set("rating", searchParams.rating);
+  if (searchParams.format) params.set("format", searchParams.format);
   if (searchParams.sort && searchParams.sort !== "updated") params.set("sort", searchParams.sort);
   if (searchParams.tag) params.set("tag", searchParams.tag);
   if (page > 1) params.set("page", String(page));
@@ -58,7 +65,7 @@ export default async function BrowsePage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const { search, genre, sort = "updated", tag, page } = await searchParams;
+  const { q: search, genre, subgenre, rating, format, sort = "updated", tag, page } = await searchParams;
   const supabase = await createClient();
 
   // Check auth state for signup CTA
@@ -76,7 +83,10 @@ export default async function BrowsePage({
       tagline,
       blurb,
       cover_url,
-      genres,
+      primary_genre,
+      subgenres,
+      content_rating,
+      format,
       tags,
       status,
       total_views,
@@ -99,12 +109,12 @@ export default async function BrowsePage({
 
   let filteredStories = (stories as unknown as StoryCardData[]) || [];
 
-  // Compute genre counts for filters
+  // Compute genre counts for filters (keyed by primary_genre slug)
   const genreCounts: Record<string, number> = {};
-  (stories as unknown as StoryCardData[])?.forEach(story => {
-    story.genres?.forEach((g: string) => {
-      genreCounts[g] = (genreCounts[g] || 0) + 1;
-    });
+  (stories as unknown as (StoryCardData & { primary_genre?: string | null })[])?.forEach(story => {
+    if (story.primary_genre) {
+      genreCounts[story.primary_genre] = (genreCounts[story.primary_genre] || 0) + 1;
+    }
   });
 
   // Apply search filter
@@ -118,19 +128,40 @@ export default async function BrowsePage({
     );
   }
 
-  // Apply genre filter
+  // Apply genre filter (primary_genre is a slug)
   if (genre) {
     filteredStories = filteredStories.filter((story) =>
-      story.genres?.includes(genre)
+      (story as StoryCardData & { primary_genre?: string | null }).primary_genre === genre
     );
   }
 
-  // Apply tag filter
-  const selectedTags = tag ? tag.split(',').map(t => t.trim().toLowerCase()) : [];
+  // Apply subgenre filter
+  if (subgenre) {
+    filteredStories = filteredStories.filter((story) =>
+      (story as StoryCardData & { subgenres?: string[] }).subgenres?.includes(subgenre)
+    );
+  }
+
+  // Apply content rating filter
+  if (rating) {
+    filteredStories = filteredStories.filter((story) =>
+      (story as StoryCardData & { content_rating?: string | null }).content_rating === rating
+    );
+  }
+
+  // Apply format filter
+  if (format) {
+    filteredStories = filteredStories.filter((story) =>
+      (story as StoryCardData & { format?: string | null }).format === format
+    );
+  }
+
+  // Apply tag filter (tags stored as slugs)
+  const selectedTags = tag ? tag.split(',').map(t => t.trim()) : [];
   if (selectedTags.length > 0) {
     filteredStories = filteredStories.filter((story) =>
       selectedTags.every((t) =>
-        story.tags?.some((st: string) => st.toLowerCase() === t)
+        story.tags?.some((st: string) => st === t)
       )
     );
   }
@@ -159,8 +190,8 @@ export default async function BrowsePage({
   const paginatedStories = filteredStories.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const resultCount = filteredStories.length;
-  const hasFilters = search || genre || sort !== "updated" || tag;
-  const sp = { search, genre, sort, tag, page };
+  const hasFilters = search || genre || subgenre || rating || format || sort !== "updated" || tag;
+  const sp = { q: search, genre, subgenre, rating, format, sort, tag, page };
 
   const jsonLd = {
     "@context": "https://schema.org",

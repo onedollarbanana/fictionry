@@ -6,10 +6,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { type StoryCardData } from '@/components/story/story-card';
 import { BrowseStoryGrid } from '@/components/story/browse-story-grid';
 import { Breadcrumb } from '@/components/ui/breadcrumb';
-import { GENRES } from '@/lib/constants';
+import { PRIMARY_GENRE_SLUGS, getPrimaryGenreBySlug } from '@/lib/constants';
 import { GenreTagSort } from '@/components/browse/genre-tag-sort';
 import { enrichWithCommunityPicks } from '@/lib/community-picks';
-import { getGenreSeo, slugToGenre, genreToSlug } from '@/lib/genre-seo';
+import { getGenreSeo } from '@/lib/genre-seo';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 
@@ -19,18 +19,15 @@ interface GenrePageProps {
 }
 
 export async function generateStaticParams() {
-  return GENRES.map((genre) => ({
-    genre: encodeURIComponent(genre),
-  }));
+  return PRIMARY_GENRE_SLUGS.map((slug) => ({ genre: slug }));
 }
 
 export async function generateMetadata({
   params,
 }: GenrePageProps): Promise<Metadata> {
   const { genre } = await params;
-  const decodedGenre = slugToGenre(genre);
-  const seo = getGenreSeo(decodedGenre);
-  const canonicalUrl = `https://www.fictionry.com/browse/genre/${genreToSlug(decodedGenre)}`;
+  const seo = getGenreSeo(genre);
+  const canonicalUrl = `https://www.fictionry.com/browse/genre/${genre}`;
 
   return {
     title: seo.metaTitle,
@@ -54,15 +51,15 @@ export default async function GenrePage({
 }: GenrePageProps) {
   const { genre } = await params;
   const { sort = 'popular' } = await searchParams;
-  const decodedGenre = slugToGenre(genre);
   const supabase = await createClient();
 
-  // Validate genre
-  if (!GENRES.includes(decodedGenre)) {
+  // Validate genre slug
+  if (!PRIMARY_GENRE_SLUGS.includes(genre)) {
     notFound();
   }
 
-  const seo = getGenreSeo(decodedGenre);
+  const genreData = getPrimaryGenreBySlug(genre)!;
+  const seo = getGenreSeo(genre);
 
   // Determine sort order
   const orderColumn =
@@ -82,7 +79,8 @@ export default async function GenrePage({
       tagline,
       blurb,
       cover_url,
-      genres,
+      primary_genre,
+      subgenres,
       tags,
       status,
       total_views,
@@ -99,7 +97,7 @@ export default async function GenrePage({
     `
     )
     .eq('visibility', 'published')
-    .contains('genres', [decodedGenre])
+    .eq('primary_genre', genre)
     .order(orderColumn, { ascending: false })
     .limit(100);
 
@@ -113,9 +111,9 @@ export default async function GenrePage({
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
-    name: `${decodedGenre} Stories`,
+    name: `${genreData.name} Stories`,
     description: seo.metaDescription,
-    url: `https://www.fictionry.com/browse/genre/${genreToSlug(decodedGenre)}`,
+    url: `https://www.fictionry.com/browse/genre/${genre}`,
     isPartOf: {
       '@type': 'WebSite',
       name: 'Fictionry',
@@ -134,8 +132,8 @@ export default async function GenrePage({
         {
           '@type': 'ListItem',
           position: 2,
-          name: decodedGenre,
-          item: `https://www.fictionry.com/browse/genre/${genreToSlug(decodedGenre)}`,
+          name: genreData.name,
+          item: `https://www.fictionry.com/browse/genre/${genre}`,
         },
       ],
     },
@@ -151,13 +149,18 @@ export default async function GenrePage({
       <Breadcrumb
         items={[
           { label: 'Genres', href: '/genres' },
-          { label: decodedGenre },
+          { label: genreData.name },
         ]}
       />
 
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold">{decodedGenre}</h1>
+          <div className="flex items-center gap-3">
+            <span className="text-4xl" role="img" aria-label={genreData.name}>
+              {genreData.emoji}
+            </span>
+            <h1 className="text-3xl font-bold">{genreData.name}</h1>
+          </div>
           <p className="text-muted-foreground mt-1">
             {typedStories.length}{' '}
             {typedStories.length === 1 ? 'story' : 'stories'}
@@ -168,17 +171,12 @@ export default async function GenrePage({
 
       {/* Genre description for SEO */}
       <div className="mb-8 rounded-lg border bg-card p-6">
-        <div className="flex items-start gap-4">
-          <span className="text-4xl" role="img" aria-label={`${decodedGenre} icon`}>
-            {seo.icon}
-          </span>
-          <div className="prose prose-sm dark:prose-invert max-w-none">
-            {seo.longDescription.split('\n\n').map((paragraph, index) => (
-              <p key={index} className="text-muted-foreground leading-relaxed">
-                {paragraph}
-              </p>
-            ))}
-          </div>
+        <div className="prose prose-sm dark:prose-invert max-w-none">
+          {seo.longDescription.split('\n\n').map((paragraph, index) => (
+            <p key={index} className="text-muted-foreground leading-relaxed">
+              {paragraph}
+            </p>
+          ))}
         </div>
       </div>
 
@@ -187,7 +185,7 @@ export default async function GenrePage({
           <CardContent className="py-12 text-center">
             <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground">
-              No stories in {decodedGenre} yet. Be the first to write one!
+              No stories in {genreData.name} yet. Be the first to write one!
             </p>
           </CardContent>
         </Card>
@@ -200,17 +198,20 @@ export default async function GenrePage({
         <div className="mt-12">
           <h2 className="text-2xl font-bold mb-4">Related Genres</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {seo.relatedGenres.map((relatedGenre) => {
-              const relatedSeo = getGenreSeo(relatedGenre);
+            {seo.relatedGenres.map((relatedSlug) => {
+              const relatedSeo = getGenreSeo(relatedSlug);
+              const relatedGenreData = getPrimaryGenreBySlug(relatedSlug);
               return (
                 <Link
-                  key={relatedGenre}
-                  href={`/browse/genre/${genreToSlug(relatedGenre)}`}
+                  key={relatedSlug}
+                  href={`/browse/genre/${relatedSlug}`}
                 >
                   <Card className="hover:shadow-lg transition-all hover:-translate-y-1 cursor-pointer h-full">
                     <CardContent className="flex items-center gap-3 py-4">
                       <span className="text-2xl">{relatedSeo.icon}</span>
-                      <span className="font-medium">{relatedGenre}</span>
+                      <span className="font-medium">
+                        {relatedGenreData?.name ?? relatedSlug}
+                      </span>
                     </CardContent>
                   </Card>
                 </Link>

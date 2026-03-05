@@ -17,6 +17,11 @@ export interface StoryCardData {
   tagline?: string | null;
   blurb?: string | null;
   cover_url?: string | null;
+  // Taxonomy v3
+  primary_genre?: string | null;
+  subgenres?: string[];
+  content_rating?: string | null;
+  // Legacy (kept for compat during migration)
   genres?: string[];
   tags?: string[];
   status?: string;
@@ -62,17 +67,21 @@ interface StoryCardProps {
   rank?: number;
 }
 
-// Genre color mapping for gradient fallbacks
+// Genre gradient fallbacks keyed by primary_genre slug
 const genreGradients: Record<string, string> = {
-  Fantasy: "from-purple-600/30 to-purple-900/50",
-  "Sci-Fi": "from-cyan-600/30 to-cyan-900/50",
-  Romance: "from-pink-600/30 to-pink-900/50",
-  Mystery: "from-slate-600/30 to-slate-900/50",
-  Horror: "from-red-800/30 to-red-950/50",
-  LitRPG: "from-emerald-600/30 to-emerald-900/50",
-  Historical: "from-amber-600/30 to-amber-900/50",
-  Adventure: "from-orange-600/30 to-orange-900/50",
-  Thriller: "from-gray-600/30 to-gray-900/50",
+  "fantasy": "from-purple-600/30 to-purple-900/50",
+  "science-fiction": "from-cyan-600/30 to-cyan-900/50",
+  "romance": "from-pink-600/30 to-pink-900/50",
+  "thriller-mystery": "from-slate-600/30 to-slate-900/50",
+  "horror": "from-red-800/30 to-red-950/50",
+  "action-adventure": "from-orange-600/30 to-orange-900/50",
+  "historical-fiction": "from-amber-600/30 to-amber-900/50",
+  "contemporary-fiction": "from-blue-600/30 to-blue-900/50",
+  "comedy-satire": "from-yellow-600/30 to-yellow-900/50",
+  "literary-fiction": "from-indigo-600/30 to-indigo-900/50",
+  "paranormal-supernatural": "from-violet-600/30 to-violet-900/50",
+  "non-fiction-essay": "from-stone-600/30 to-stone-900/50",
+  "fan-fiction": "from-emerald-600/30 to-emerald-900/50",
 };
 
 const statusColors: Record<string, string> = {
@@ -126,8 +135,8 @@ export function StoryCard({
   expandable = false,
   rank,
 }: StoryCardProps) {
-  const primaryGenre = story.genres?.[0] || "Fantasy";
-  const gradientClass = genreGradients[primaryGenre] || genreGradients.Fantasy;
+  const primaryGenreSlug = story.primary_genre || story.genres?.[0] || "fantasy";
+  const gradientClass = genreGradients[primaryGenreSlug] || "from-purple-600/30 to-purple-900/50";
   const linkHref = href || getStoryUrl(story);
   const authorUsername = getAuthorUsername(story);
   const [expanded, setExpanded] = useState(false);
@@ -229,12 +238,20 @@ export function StoryCard({
             </p>
           )}
 
-          {/* Genres */}
-          {story.genres && story.genres.length > 0 && (
+          {/* Genre + Subgenres */}
+          {(story.primary_genre || (story.subgenres && story.subgenres.length > 0)) && (
             <div className="flex flex-wrap gap-1 mt-2">
-              {(expandable && expanded ? story.genres : story.genres.slice(0, 3)).map((genre) => (
-                <Badge key={genre} variant="secondary" className="text-xs">
-                  {genre}
+              {story.primary_genre && (
+                <Badge variant="secondary" className="text-xs capitalize">
+                  {story.primary_genre.replace(/-/g, ' ')}
+                </Badge>
+              )}
+              {(expandable && expanded
+                ? story.subgenres
+                : story.subgenres?.slice(0, 2)
+              )?.map((sub) => (
+                <Badge key={sub} variant="outline" className="text-xs capitalize">
+                  {sub.replace(/-/g, ' ')}
                 </Badge>
               ))}
             </div>
@@ -329,17 +346,19 @@ export function StoryCard({
 
           {/* Hover overlay */}
           <div className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col justify-end p-3">
-            {/* Genres on hover */}
-            {story.genres && story.genres.length > 0 && (
+            {/* Primary genre + first subgenre on hover */}
+            {(story.primary_genre || (story.subgenres && story.subgenres.length > 0)) && (
               <div className="flex flex-wrap gap-1 mb-2">
-                {story.genres.slice(0, 2).map((genre) => (
-                  <span
-                    key={genre}
-                    className="px-2 py-0.5 bg-white/20 rounded text-xs text-white"
-                  >
-                    {genre}
+                {story.primary_genre && (
+                  <span className="px-2 py-0.5 bg-white/20 rounded text-xs text-white capitalize">
+                    {story.primary_genre.replace(/-/g, ' ')}
                   </span>
-                ))}
+                )}
+                {story.subgenres?.[0] && (
+                  <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-white/80 capitalize">
+                    {story.subgenres[0].replace(/-/g, ' ')}
+                  </span>
+                )}
               </div>
             )}
             

@@ -74,7 +74,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       title,
       blurb,
       cover_url,
-      genres,
+      primary_genre,
       slug,
       short_id,
       profiles!author_id(
@@ -90,7 +90,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   const authorName = (story.profiles as any)?.display_name || (story.profiles as any)?.username || "Unknown";
-  const genreLabel = story.genres && story.genres.length > 0 ? story.genres[0] : "";
+  const genreLabel = story.primary_genre
+    ? story.primary_genre.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
+    : "";
   const title = genreLabel
     ? `Read ${story.title} by ${authorName} — ${genreLabel} Fiction | Fictionry`
     : `Read ${story.title} by ${authorName} | Fictionry`;
@@ -105,7 +107,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   ogParams.set("author", authorName);
   if (story.cover_url) ogParams.set("cover", story.cover_url);
   if (story.blurb) ogParams.set("description", story.blurb.substring(0, 120));
-  if (story.genres && story.genres.length > 0) ogParams.set("genre", story.genres[0]);
+  if (story.primary_genre) ogParams.set("genre", genreLabel);
 
   const ogImageUrl = `https://www.fictionry.com/api/og?${ogParams.toString()}`;
 
@@ -311,7 +313,9 @@ export default async function StoryPage({ params }: PageProps) {
               url: `https://www.fictionry.com/profile/${story.profiles?.username || ""}`,
             },
             description: story.blurb || undefined,
-            genre: story.genres || undefined,
+            genre: story.primary_genre
+              ? story.primary_genre.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
+              : undefined,
             image: story.cover_url || undefined,
             url: getAbsoluteStoryUrl(resolved),
             numberOfPages: publishedChapters.length,
@@ -419,27 +423,32 @@ export default async function StoryPage({ params }: PageProps) {
             </span>
           )}
 
-          {/* Genres - now clickable */}
-          {story.genres && story.genres.length > 0 && (
+          {/* Primary genre + subgenres */}
+          {(story.primary_genre || (story.subgenres && story.subgenres.length > 0)) && (
             <div className="flex flex-wrap items-center gap-2 mb-3">
-              {(story.genres || []).map((genre: string) => (
-                <Link key={genre} href={`/browse/genre/${encodeURIComponent(genre)}`}>
-                  <Badge variant="default" className="cursor-pointer hover:bg-primary/80">
-                    {genre}
+              {story.primary_genre && (
+                <Link href={`/browse/genre/${story.primary_genre}`}>
+                  <Badge variant="default" className="cursor-pointer hover:bg-primary/80 capitalize">
+                    {story.primary_genre.replace(/-/g, ' ')}
                   </Badge>
                 </Link>
+              )}
+              {(story.subgenres || []).map((sub: string) => (
+                <Badge key={sub} variant="secondary" className="capitalize">
+                  {sub.replace(/-/g, ' ')}
+                </Badge>
               ))}
             </div>
           )}
-          
-          {/* Tags - now clickable */}
+
+          {/* Tags - clickable, link to browse filter */}
           {story.tags && story.tags.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 mb-4">
               <span className="text-sm text-muted-foreground">Tags:</span>
               {(story.tags || []).map((tag: string) => (
-                <Link key={tag} href={`/browse/tag/${encodeURIComponent(tag)}`}>
+                <Link key={tag} href={`/browse?tag=${encodeURIComponent(tag)}`}>
                   <Badge variant="secondary" className="cursor-pointer hover:bg-muted">
-                    {tag}
+                    {tag.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
                   </Badge>
                 </Link>
               ))}

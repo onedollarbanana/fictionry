@@ -38,19 +38,13 @@ export default async function RisingStarsPage({ searchParams }: PageProps) {
   const genre = params.genre || "";
   const supabase = await createClient();
 
-  // Fetch genres for filter
-  const { data: genres } = await supabase
-    .from("genres")
-    .select("name, slug")
-    .order("display_order");
-
   // Query story_rankings snapshot
   const today = new Date().toISOString().split("T")[0];
   let query = supabase
     .from("story_rankings")
     .select(
       `rank, score, stories!story_id(
-        id, slug, short_id, title, tagline, blurb, cover_url, genres, tags, status,
+        id, slug, short_id, title, tagline, blurb, cover_url, primary_genre, subgenres, tags, status,
         total_views, follower_count, chapter_count, rating_average, rating_count,
         created_at, updated_at,
         profiles!author_id(username, display_name)
@@ -89,7 +83,7 @@ export default async function RisingStarsPage({ searchParams }: PageProps) {
       </div>
 
       <div className="mb-6">
-        <DiscoveryFilter genres={genres || []} />
+        <DiscoveryFilter />
       </div>
 
       {stories.length === 0 ? (

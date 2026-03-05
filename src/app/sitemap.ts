@@ -1,6 +1,6 @@
 import { MetadataRoute } from 'next';
 import { createClient } from '@supabase/supabase-js';
-import { GENRES } from '@/lib/constants';
+import { PRIMARY_GENRE_SLUGS } from '@/lib/constants';
 import { getStoryUrl } from '@/lib/url-utils';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -62,9 +62,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }));
 
-  // Genre pages
-  const genrePages = GENRES.map((genre) => ({
-    url: `${baseUrl}/browse/genre/${encodeURIComponent(genre)}`,
+  // Genre pages (slugs are already URL-safe)
+  const genrePages = PRIMARY_GENRE_SLUGS.map((slug) => ({
+    url: `${baseUrl}/browse/genre/${slug}`,
     lastModified: new Date(),
     changeFrequency: 'weekly' as const,
     priority: 0.7,

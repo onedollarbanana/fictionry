@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tag, BookOpen } from "lucide-react";
 import { TagGrid } from "./tag-grid";
+import { TAG_GROUPS, ALL_TAGS } from "@/lib/constants";
 
 export const metadata = {
   title: "Browse by Tag | Fictionry",
@@ -19,17 +20,27 @@ export default async function TagsPage() {
     .eq("visibility", "published")
     .gt("chapter_count", 0);
 
-  // Count stories per tag
+  // Count stories per tag slug
   const tagCounts: Record<string, number> = {};
   stories?.forEach((story) => {
-    story.tags?.forEach((tag: string) => {
-      tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+    story.tags?.forEach((tagSlug: string) => {
+      tagCounts[tagSlug] = (tagCounts[tagSlug] || 0) + 1;
     });
   });
 
-  const sortedTags = Object.entries(tagCounts)
-    .sort(([, a], [, b]) => b - a)
-    .map(([tag, count]) => ({ tag, count }));
+  // Build enriched tag list with labels and group names
+  const tagItems = Object.entries(tagCounts)
+    .map(([slug, count]) => {
+      const tagDef = ALL_TAGS.find(t => t.slug === slug);
+      const groupDef = TAG_GROUPS.find(g => g.tags.some(t => t.slug === slug));
+      return {
+        slug,
+        label: tagDef?.name ?? slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+        group: groupDef?.name ?? 'Other',
+        count,
+      };
+    })
+    .sort((a, b) => b.count - a.count);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -41,7 +52,7 @@ export default async function TagsPage() {
         Explore stories by specific content tags
       </p>
 
-      {sortedTags.length === 0 ? (
+      {tagItems.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -51,7 +62,7 @@ export default async function TagsPage() {
           </CardContent>
         </Card>
       ) : (
-        <TagGrid tags={sortedTags} />
+        <TagGrid tags={tagItems} />
       )}
     </div>
   );

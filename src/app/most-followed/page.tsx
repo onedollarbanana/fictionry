@@ -28,16 +28,10 @@ export default async function MostFollowedPage({ searchParams }: PageProps) {
 
   const supabase = await createClient();
 
-  // Fetch genres for filter
-  const { data: genres } = await supabase
-    .from("genres")
-    .select("name, slug")
-    .order("display_order");
-
   let query = supabase
     .from("stories")
     .select(
-      `id, slug, short_id, title, tagline, blurb, cover_url, genres, tags, status,
+      `id, slug, short_id, title, tagline, blurb, cover_url, primary_genre, subgenres, tags, status,
        total_views, follower_count, chapter_count, rating_average, rating_count,
        created_at, updated_at,
        profiles!author_id(username, display_name)`,
@@ -49,7 +43,7 @@ export default async function MostFollowedPage({ searchParams }: PageProps) {
     .range(offset, offset + PAGE_SIZE - 1);
 
   if (genre) {
-    query = query.contains("genres", [genre]);
+    query = query.eq("primary_genre", genre);
   }
 
   const { data, count, error } = await query;
@@ -77,7 +71,7 @@ export default async function MostFollowedPage({ searchParams }: PageProps) {
       </div>
 
       <div className="mb-6">
-        <DiscoveryFilter genres={genres || []} />
+        <DiscoveryFilter />
       </div>
 
       {rankedStories.length === 0 ? (
