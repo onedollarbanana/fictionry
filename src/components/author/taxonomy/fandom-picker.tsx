@@ -94,7 +94,7 @@ export function FandomPicker({ value, onChange }: FandomPickerProps) {
             placeholder="Search fandoms or type a custom name..."
           />
           {filtered.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-lg z-10 overflow-hidden">
+            <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-md shadow-xl z-50 overflow-hidden">
               {filtered.map(fandom => (
                 <button
                   key={fandom}
@@ -109,7 +109,7 @@ export function FandomPicker({ value, onChange }: FandomPickerProps) {
             </div>
           )}
           {query.trim() && !COMMON_FANDOMS.some(f => f.toLowerCase() === query.toLowerCase().trim()) && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-lg z-10 overflow-hidden">
+            <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-md shadow-xl z-50 overflow-hidden">
               <button
                 type="button"
                 onClick={() => addFandom(query)}

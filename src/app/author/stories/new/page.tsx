@@ -74,7 +74,10 @@ export default function NewStoryPage() {
   }
 
   const next = () => {
-    if (step < STEPS.length && canProceed()) setStep(s => s + 1)
+    if (step < STEPS.length && canProceed()) {
+      setStep(s => s + 1)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
   }
 
   const back = () => {
