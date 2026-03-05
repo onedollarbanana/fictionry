@@ -98,8 +98,6 @@ export async function notifyFollowers(
   chapterId: string
 ): Promise<{ sent: number; failed: number }> {
   const wp = getWebPush();
-  if (!wp) return { sent: 0, failed: 0 };
-
   const supabase = createAdminClient();
 
   // Get story author
@@ -123,16 +121,6 @@ export async function notifyFollowers(
   }
 
   const followerIds = followers.map((f: { user_id: string }) => f.user_id);
-
-  // Get push subscriptions for these followers
-  const { data: subscriptions, error: subError } = await supabase
-    .from('push_subscriptions')
-    .select('endpoint, p256dh, auth, user_id')
-    .in('user_id', followerIds);
-
-  if (subError || !subscriptions?.length) {
-    return { sent: 0, failed: 0 };
-  }
 
   // Get tier settings for this story
   const { data: tierSettings } = await supabase
@@ -279,45 +267,52 @@ export async function notifyFollowers(
   let sent = 0;
   let failed = 0;
 
-  // Send notifications
-  const results = await Promise.allSettled(
-    subscriptions.map(async (sub: { endpoint: string; p256dh: string; auth: string; user_id: string }) => {
-      const userTierLevel = userTierMap.get(sub.user_id) ?? 0;
+  // Send push notifications only if VAPID is configured and subscribers exist
+  if (wp) {
+    const { data: subscriptions, error: subError } = await supabase
+      .from('push_subscriptions')
+      .select('endpoint, p256dh, auth, user_id')
+      .in('user_id', followerIds);
 
-      // Find the right notification target for this user's tier
-      // Check exact tier first, then fall down to lower tiers
-      let target: NotifyTarget | undefined;
-      for (let level = userTierLevel; level >= 0; level--) {
-        target = tierTargets.get(level);
-        if (target) break;
+    if (!subError && subscriptions?.length) {
+      const results = await Promise.allSettled(
+        subscriptions.map(async (sub: { endpoint: string; p256dh: string; auth: string; user_id: string }) => {
+          const userTierLevel = userTierMap.get(sub.user_id) ?? 0;
+
+          let target: NotifyTarget | undefined;
+          for (let level = userTierLevel; level >= 0; level--) {
+            target = tierTargets.get(level);
+            if (target) break;
+          }
+
+          if (!target) return false;
+
+          const notificationUrl = story.slug && target.slug && target.shortId
+            ? getChapterUrl(
+                { id: storyId, slug: story.slug, short_id: story.short_id },
+                { short_id: target.shortId, slug: target.slug }
+              )
+            : `/story/${storyId}/chapter/${target.chapterId}`;
+
+          const payload: PushPayload = {
+            title: `New Chapter Available: ${storyTitle}`,
+            body: `Chapter ${target.chapterNumber}: ${target.chapterTitle}`,
+            icon: '/icons/icon-192x192.png',
+            badge: '/icons/icon-72x72.png',
+            url: notificationUrl,
+          };
+
+          return sendPushNotification(sub, payload);
+        })
+      );
+
+      for (const result of results) {
+        if (result.status === 'fulfilled' && result.value) {
+          sent++;
+        } else {
+          failed++;
+        }
       }
-
-      if (!target) return false; // No chapter to notify about
-
-      const notificationUrl = story.slug && target.slug && target.shortId
-        ? getChapterUrl(
-            { id: storyId, slug: story.slug, short_id: story.short_id },
-            { short_id: target.shortId, slug: target.slug }
-          )
-        : `/story/${storyId}/chapter/${target.chapterId}`;
-
-      const payload: PushPayload = {
-        title: `New Chapter Available: ${storyTitle}`,
-        body: `Chapter ${target.chapterNumber}: ${target.chapterTitle}`,
-        icon: '/icons/icon-192x192.png',
-        badge: '/icons/icon-72x72.png',
-        url: notificationUrl,
-      };
-
-      return sendPushNotification(sub, payload);
-    })
-  );
-
-  for (const result of results) {
-    if (result.status === 'fulfilled' && result.value) {
-      sent++;
-    } else {
-      failed++;
     }
   }
 
