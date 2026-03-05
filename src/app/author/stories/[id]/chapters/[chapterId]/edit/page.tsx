@@ -242,6 +242,21 @@ export default function EditChapterPage() {
       })
       .eq("id", storyId);
 
+    // Trigger follower notifications on first publish (non-blocking)
+    if (!wasPublished && publish && chapter) {
+      void fetch("/api/push/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          storyId,
+          storyTitle,
+          chapterTitle: title,
+          chapterNumber: chapter.chapter_number,
+          chapterId,
+        }),
+      });
+    }
+
     router.push(`/author/stories/${storyId}`);
   };
 
