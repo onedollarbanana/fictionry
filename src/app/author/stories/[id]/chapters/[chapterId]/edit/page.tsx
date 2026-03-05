@@ -247,6 +247,7 @@ export default function EditChapterPage() {
       void fetch("/api/push/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        keepalive: true,
         body: JSON.stringify({
           storyId,
           storyTitle,
