@@ -401,7 +401,7 @@ async function sendChapterEmails({
           link: chapterUrl,
         });
 
-        void sendEmail({
+        await sendEmail({
           to: email,
           subject: `New chapter: ${storyTitle} — Chapter ${target.chapterNumber}`,
           react: createElement(NewChapterEmail, {
