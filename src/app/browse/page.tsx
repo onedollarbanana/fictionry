@@ -251,7 +251,7 @@ export default async function BrowsePage({
           </CardContent>
         </Card>
       ) : (
-        <BrowseStoryGrid stories={paginatedStories} />
+        <BrowseStoryGrid stories={paginatedStories} surface={search ? 'search' : 'browse'} />
       )}
 
       {totalPages > 1 && (

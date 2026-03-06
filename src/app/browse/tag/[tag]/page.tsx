@@ -100,7 +100,7 @@ export default async function TagPage({ params, searchParams }: TagPageProps) {
         <GenreTagSort currentSort={sort} />
       </div>
       
-      <BrowseStoryGrid stories={typedStories} />
+      <BrowseStoryGrid stories={typedStories} surface="tag" />
     </div>
   );
 }

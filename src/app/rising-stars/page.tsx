@@ -97,7 +97,7 @@ export default async function RisingStarsPage({ searchParams }: PageProps) {
           </CardContent>
         </Card>
       ) : (
-        <DiscoveryStoryList stories={stories} showRank />
+        <DiscoveryStoryList stories={stories} showRank surface="rising" />
       )}
     </div>
   );

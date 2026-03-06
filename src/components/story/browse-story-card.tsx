@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import type { StoryCardData } from "./story-card";
 import { getStoryUrl } from "@/lib/url-utils";
+import { useImpressionLogger } from "@/hooks/useImpressionLogger";
 
 const statusColors: Record<string, string> = {
   ongoing: "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200",
@@ -49,10 +50,12 @@ function getAuthorUsername(story: StoryCardData): string | null {
 interface BrowseStoryCardProps {
   story: StoryCardData;
   className?: string;
+  surface?: string;
 }
 
-export function BrowseStoryCard({ story, className }: BrowseStoryCardProps) {
+export function BrowseStoryCard({ story, className, surface }: BrowseStoryCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const cardRef = useImpressionLogger(story.id, surface ?? '');
   const primaryGenre = story.genres?.[0] || "Fantasy";
   const gradientClass = genreGradients[primaryGenre] || genreGradients.Fantasy;
   const authorUsername = getAuthorUsername(story);
@@ -72,6 +75,7 @@ export function BrowseStoryCard({ story, className }: BrowseStoryCardProps) {
 
   return (
     <div
+      ref={cardRef as React.RefObject<HTMLDivElement>}
       className={cn(
         "flex gap-4 p-4 border rounded-lg bg-card hover:border-primary/30 transition-colors relative overflow-hidden",
         className

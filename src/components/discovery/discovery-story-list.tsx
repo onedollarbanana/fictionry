@@ -8,18 +8,20 @@ interface RankedStory extends StoryCardData {
 interface Props {
   stories: RankedStory[];
   showRank?: boolean;
+  surface?: string;
 }
 
-export function DiscoveryStoryList({ stories, showRank = false }: Props) {
+export function DiscoveryStoryList({ stories, showRank = false, surface }: Props) {
   return (
     <div className="flex flex-col gap-3">
       {stories.map((story) => (
-        <StoryCard 
-          key={story.id} 
-          story={story} 
-          variant="horizontal" 
+        <StoryCard
+          key={story.id}
+          story={story}
+          variant="horizontal"
           expandable
           rank={showRank ? story.rank : undefined}
+          surface={surface}
         />
       ))}
     </div>

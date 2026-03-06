@@ -101,7 +101,7 @@ export default async function PopularPage({ searchParams }: PageProps) {
         </Card>
       ) : (
         <>
-          <DiscoveryStoryList stories={rankedStories} showRank />
+          <DiscoveryStoryList stories={rankedStories} showRank surface="popular" />
           <DiscoveryPagination
             currentPage={page}
             totalPages={totalPages}

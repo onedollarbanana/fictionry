@@ -153,6 +153,7 @@ export default async function Home() {
             stories={trendingThisWeek}
             viewAllLink="/browse"
             emptyMessage="Check back soon!"
+            surface="homepage"
           />
         )}
         {staffPicks.length > 0 && (
@@ -162,6 +163,7 @@ export default async function Home() {
             stories={staffPicks}
             viewAllLink="/featured"
             emptyMessage="Staff picks coming soon!"
+            surface="featured"
           />
         )}
         {communityPicks.length > 0 && (
@@ -171,6 +173,7 @@ export default async function Home() {
             stories={communityPicks}
             viewAllLink="/community-picks"
             emptyMessage="Community picks coming soon!"
+            surface="community_picks"
           />
         )}
         <StoryCarousel
@@ -179,6 +182,7 @@ export default async function Home() {
           stories={newReleases}
           viewAllLink="/new-releases"
           emptyMessage="New stories coming soon!"
+          surface="new_releases"
         />
 
         {/* Genre Shelves - personalized order for logged-in users */}
@@ -194,6 +198,7 @@ export default async function Home() {
                   icon={genre.icon}
                   stories={genre.stories}
                   viewAllLink={`/browse?genre=${encodeURIComponent(genre.name)}`}
+                  surface="homepage"
                 />
               ))}
             
@@ -214,6 +219,7 @@ export default async function Home() {
                   icon={genre.icon}
                   stories={genre.stories}
                   viewAllLink={`/browse?genre=${encodeURIComponent(genre.name)}`}
+                  surface="homepage"
                 />
               ))}
           </>
@@ -227,6 +233,7 @@ export default async function Home() {
             icon={genre.icon}
             stories={genre.stories}
             viewAllLink={`/browse?genre=${encodeURIComponent(genre.name)}`}
+            surface="homepage"
           />
         ))}
 
@@ -236,6 +243,7 @@ export default async function Home() {
           stories={risingStars}
           viewAllLink="/rising-stars"
           emptyMessage="New stories coming soon!"
+          surface="rising"
         />
 
         {fastestGrowing.length > 0 && (
@@ -245,6 +253,7 @@ export default async function Home() {
             stories={fastestGrowing}
             viewAllLink="/browse"
             emptyMessage="Check back soon!"
+            surface="homepage"
           />
         )}
 
@@ -254,6 +263,7 @@ export default async function Home() {
           stories={latestUpdates}
           viewAllLink="/recently-updated"
           emptyMessage="No recent updates"
+          surface="recently_updated"
         />
       </main>
     </div>

@@ -79,7 +79,7 @@ export default async function RecentlyUpdatedPage({ searchParams }: PageProps) {
         </Card>
       ) : (
         <>
-          <DiscoveryStoryList stories={typedStories} />
+          <DiscoveryStoryList stories={typedStories} surface="recently_updated" />
           <DiscoveryPagination
             currentPage={page}
             totalPages={totalPages}

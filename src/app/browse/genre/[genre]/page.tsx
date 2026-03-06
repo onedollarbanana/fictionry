@@ -192,7 +192,7 @@ export default async function GenrePage({
           </CardContent>
         </Card>
       ) : (
-        <BrowseStoryGrid stories={typedStories} />
+        <BrowseStoryGrid stories={typedStories} surface="genre" />
       )}
 
       {/* Related Genres */}

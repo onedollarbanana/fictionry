@@ -86,7 +86,7 @@ export default async function NewReleasesPage({ searchParams }: PageProps) {
         </Card>
       ) : (
         <>
-          <DiscoveryStoryList stories={typedStories} />
+          <DiscoveryStoryList stories={typedStories} surface="new_releases" />
           <DiscoveryPagination
             currentPage={page}
             totalPages={totalPages}

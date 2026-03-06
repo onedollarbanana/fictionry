@@ -13,6 +13,7 @@ interface StoryCarouselProps {
   stories: RankedStory[];
   viewAllLink?: string;
   emptyMessage?: string;
+  surface?: string;
 }
 
 export function StoryCarousel({
@@ -21,6 +22,7 @@ export function StoryCarousel({
   stories,
   viewAllLink,
   emptyMessage = "No stories to show",
+  surface,
 }: StoryCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -122,7 +124,7 @@ export function StoryCarousel({
       >
         {stories.map((story) => (
           <div key={story.id} className="snap-start">
-            <StoryCardCompact story={story} />
+            <StoryCardCompact story={story} surface={surface} />
           </div>
         ))}
       </div>

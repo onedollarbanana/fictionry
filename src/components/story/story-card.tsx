@@ -3,11 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { BookOpen, Eye, Heart, BookMarked, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import { BookOpen, Eye, Heart, BookMarked, Clock, ChevronDown, ChevronUp, EyeOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { getStoryUrl } from "@/lib/url-utils";
+import { useImpressionLogger } from "@/hooks/useImpressionLogger";
 
 export interface StoryCardData {
   id: string;
@@ -68,6 +69,10 @@ interface StoryCardProps {
   hideAuthor?: boolean;
   /** Rank number to display inside card */
   rank?: number;
+  /** Discovery surface for impression tracking (omit to skip tracking) */
+  surface?: string;
+  /** Logged-in user id — enables the Hide Story button */
+  userId?: string | null;
 }
 
 // Genre gradient fallbacks keyed by primary_genre slug
@@ -164,12 +169,38 @@ export function StoryCard({
   hideAuthor = false,
   expandable = false,
   rank,
+  surface,
+  userId,
 }: StoryCardProps) {
   const primaryGenreSlug = story.primary_genre || story.genres?.[0] || "fantasy";
   const gradientClass = genreGradients[primaryGenreSlug] || "from-purple-600/30 to-purple-900/50";
   const linkHref = href || getStoryUrl(story);
   const authorUsername = getAuthorUsername(story);
   const [expanded, setExpanded] = useState(false);
+  const [hidden, setHidden] = useState(false);
+  const [hiding, setHiding] = useState(false);
+
+  // Impression tracking — only active when a surface is provided
+  const cardRef = useImpressionLogger(story.id, surface ?? '');
+
+  async function handleHide() {
+    if (hiding) return;
+    setHiding(true);
+    try {
+      await fetch('/api/story-hides', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ story_id: story.id }),
+      });
+      setHidden(true);
+    } catch {
+      // silent fail
+    } finally {
+      setHiding(false);
+    }
+  }
+
+  if (hidden) return null;
 
   // Use updated_at for cache busting, fallback to stable value
   const imageTimestamp = story.updated_at 
@@ -187,10 +218,13 @@ export function StoryCard({
 
   if (variant === "horizontal") {
     return (
-      <div className={cn(
-        "flex gap-4 p-4 border rounded-lg bg-card hover:bg-muted/50 transition-colors",
-        className
-      )}>
+      <div
+        ref={cardRef as React.RefObject<HTMLDivElement>}
+        className={cn(
+          "flex gap-4 p-4 border rounded-lg bg-card hover:bg-muted/50 transition-colors",
+          className
+        )}
+      >
         {/* Cover */}
         <Link href={linkHref} className="shrink-0">
           {story.cover_url ? (
@@ -236,7 +270,7 @@ export function StoryCard({
               ))}
             </div>
 
-            {/* Status + Rank column */}
+            {/* Status + Rank + Hide column */}
             <div className="flex flex-col items-end gap-1 shrink-0">
               {story.status && (
                 <span className={cn(
@@ -250,6 +284,16 @@ export function StoryCard({
                 <span className="text-2xl md:text-3xl font-bold text-primary/70">
                   #{rank}
                 </span>
+              )}
+              {userId && (
+                <button
+                  onClick={handleHide}
+                  disabled={hiding}
+                  title="Hide this story"
+                  className="mt-1 p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                >
+                  <EyeOff className="h-4 w-4" />
+                </button>
               )}
             </div>
           </div>
@@ -345,13 +389,24 @@ export function StoryCard({
 
   // Vertical variant (default)
   return (
+    <div
+      ref={cardRef as React.RefObject<HTMLDivElement>}
+      className={cn("relative flex-shrink-0 group", config.width, className)}
+    >
+    {/* Hide button — visible on card hover, shown only to logged-in users */}
+    {userId && (
+      <button
+        onClick={handleHide}
+        disabled={hiding}
+        title="Hide this story"
+        className="absolute top-2 left-2 z-10 p-1 rounded bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity text-white hover:bg-black/90 focus:opacity-100"
+      >
+        <EyeOff className="h-3.5 w-3.5" />
+      </button>
+    )}
     <Link
       href={linkHref}
-      className={cn(
-        "group block flex-shrink-0",
-        config.width,
-        className
-      )}
+      className="block"
     >
       <div className="relative overflow-hidden rounded-lg transition-all duration-200 group-hover:scale-[1.02] group-hover:shadow-lg">
         {/* Cover Image */}
@@ -492,5 +547,6 @@ export function StoryCard({
         )}
       </div>
     </Link>
+    </div>
   );
 }

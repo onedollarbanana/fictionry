@@ -85,7 +85,7 @@ export default async function MostFollowedPage({ searchParams }: PageProps) {
         </Card>
       ) : (
         <>
-          <DiscoveryStoryList stories={rankedStories} showRank />
+          <DiscoveryStoryList stories={rankedStories} showRank surface="most_followed" />
           <DiscoveryPagination
             currentPage={page}
             totalPages={totalPages}

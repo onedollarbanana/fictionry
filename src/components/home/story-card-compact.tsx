@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { BookOpen, Eye, Heart, Users } from 'lucide-react'
 import { getStoryUrl } from "@/lib/url-utils";
+import { useImpressionLogger } from "@/hooks/useImpressionLogger";
 
 interface StoryCardCompactProps {
   story: {
@@ -35,9 +36,11 @@ interface StoryCardCompactProps {
   }
   rank?: number
   showRank?: boolean
+  surface?: string
 }
 
-export function StoryCardCompact({ story, rank, showRank = false }: StoryCardCompactProps) {
+export function StoryCardCompact({ story, rank, showRank = false, surface }: StoryCardCompactProps) {
+  const cardRef = useImpressionLogger(story.id, surface ?? '');
   const formatNumber = (num: number | null | undefined) => {
     if (!num) return '0'
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`
@@ -51,7 +54,8 @@ export function StoryCardCompact({ story, rank, showRank = false }: StoryCardCom
     : 'v1'
 
   return (
-    <Link href={getStoryUrl(story)} className="block group flex-shrink-0 w-[180px] sm:w-[200px]">
+    <div ref={cardRef as React.RefObject<HTMLDivElement>} className="flex-shrink-0 w-[180px] sm:w-[200px]">
+    <Link href={getStoryUrl(story)} className="block group h-full">
       <div className="bg-card border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow h-full flex flex-col">
         {/* Cover Image */}
         <div className="relative w-full aspect-[2/3] overflow-hidden bg-muted">
@@ -141,6 +145,7 @@ export function StoryCardCompact({ story, rank, showRank = false }: StoryCardCom
         </div>
       </div>
     </Link>
+    </div>
   )
 }
 
