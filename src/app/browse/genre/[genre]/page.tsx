@@ -25,7 +25,8 @@ export async function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: GenrePageProps): Promise<Metadata> {
-  const { genre } = await params;
+  const { genre: rawGenre } = await params;
+  const genre = rawGenre.toLowerCase();
   const seo = getGenreSeo(genre);
   const canonicalUrl = `https://www.fictionry.com/browse/genre/${genre}`;
   return {
@@ -55,7 +56,8 @@ function mapRpcRow(row: any): StoryCardData {
 }
 
 export default async function GenrePage({ params, searchParams }: GenrePageProps) {
-  const { genre } = await params;
+  const { genre: rawGenre } = await params;
+  const genre = rawGenre.toLowerCase();
   const { surface: rawSurface = 'rising' } = await searchParams;
   const surface: GenreSurface = VALID_SURFACES.includes(rawSurface as GenreSurface)
     ? (rawSurface as GenreSurface)
