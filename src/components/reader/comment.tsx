@@ -228,23 +228,25 @@ export function Comment({
 
   const handleReply = async () => {
     if (!currentUserId || !replyContent.trim()) return;
-    
+
     setIsSubmitting(true);
-    const supabase = createClient();
-    
-    const { error } = await supabase.from("comments").insert({
-      chapter_id: chapterId,
-      user_id: currentUserId,
-      parent_id: topLevelCommentId || comment.id,
-      content: replyContent.trim(),
+
+    const res = await fetch("/api/comments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chapter_id: chapterId,
+        parent_id: topLevelCommentId || comment.id,
+        content: replyContent.trim(),
+      }),
     });
 
-    if (!error) {
+    if (res.ok) {
       setReplyContent("");
       setShowReplyInput(false);
       onReplyPosted();
     }
-    
+
     setIsSubmitting(false);
   };
 

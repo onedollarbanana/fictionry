@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { createBrowserClient } from "@supabase/ssr";
 import { useToast } from "@/components/ui/toast";
 
 interface CreateAnnouncementFormProps {
@@ -27,31 +26,19 @@ export function CreateAnnouncementForm({ storyId, storyTitle }: CreateAnnounceme
 
     setIsSubmitting(true);
 
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      showToast("You must be logged in", "error");
-      setIsSubmitting(false);
-      return;
-    }
-
-    const { error } = await supabase
-      .from("announcements")
-      .insert({
+    const res = await fetch("/api/announcements", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
         story_id: storyId,
-        author_id: user.id,
         title: title.trim(),
         content: content.trim(),
-        scope: "story"
-      });
+        scope: "story",
+      }),
+    });
 
-    if (error) {
+    if (!res.ok) {
       showToast("Failed to post announcement", "error");
-      console.error("Error posting announcement:", error);
     } else {
       showToast("Announcement posted!", "success");
       setTitle("");

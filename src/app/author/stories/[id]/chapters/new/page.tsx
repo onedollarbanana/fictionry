@@ -173,7 +173,7 @@ export default function NewChapterPage() {
       ? chapters[0].chapter_number + 1 
       : 1;
 
-    const { error: insertError } = await supabase
+    const { data: newChapter, error: insertError } = await supabase
       .from("chapters")
       .insert({
         story_id: storyId,
@@ -187,7 +187,7 @@ export default function NewChapterPage() {
         author_note_after: authorNoteAfter || null,
         scheduled_for: scheduleDate ? new Date(scheduleDate).toISOString() : null,
       })
-      .select()
+      .select("id")
       .single();
 
     if (insertError) {
@@ -220,6 +220,22 @@ export default function NewChapterPage() {
       await supabase.rpc('log_writing_activity', {
         p_user_id: user.id,
         p_words: wordCount,
+      });
+    }
+
+    // Trigger follower notifications on publish (non-blocking, keepalive survives navigation)
+    if (publish && newChapter) {
+      void fetch("/api/push/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        keepalive: true,
+        body: JSON.stringify({
+          storyId,
+          storyTitle,
+          chapterTitle: title,
+          chapterNumber: nextChapterNumber,
+          chapterId: newChapter.id,
+        }),
       });
     }
 

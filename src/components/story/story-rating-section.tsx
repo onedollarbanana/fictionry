@@ -144,17 +144,17 @@ export function StoryRatingSection({ storyId, authorId, initialStats, initialUse
       };
       
       if (userRating) {
-        // Update existing
+        // Update existing (no notification for updates)
         const { error } = await supabase
           .from('story_ratings')
           .update(ratingData)
           .eq('story_id', storyId)
           .eq('user_id', userId);
-        
+
         if (error) throw error;
         showToast('Rating updated!', 'success');
       } else {
-        // Insert new - check rate limit
+        // Insert new via API (triggers author notification + email)
         const rateCheck = await checkRateLimit(supabase, userId, 'review');
         if (!rateCheck.allowed) {
           showToast(rateCheck.message || 'Rate limited', 'error');
@@ -162,11 +162,12 @@ export function StoryRatingSection({ storyId, authorId, initialStats, initialUse
           return;
         }
 
-        const { error } = await supabase
-          .from('story_ratings')
-          .insert(ratingData);
-        
-        if (error) throw error;
+        const res = await fetch('/api/ratings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(ratingData),
+        });
+        if (!res.ok) throw new Error('Failed to save rating');
         showToast('Rating saved!', 'success');
       }
       

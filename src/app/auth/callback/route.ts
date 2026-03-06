@@ -1,6 +1,9 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import { sendEmail } from '@/lib/send-email'
+import { WelcomeEmail } from '@/components/emails/welcome-email'
+import { createElement } from 'react'
 
 function generateUsername(name: string | null, email: string | null): string {
   // Try to create a username from the display name
@@ -63,37 +66,41 @@ export async function GET(request: Request) {
 
         const { data: profile } = await supabase
           .from('profiles')
-          .select('id, onboarding_completed, display_name, avatar_url')
+          .select('id, onboarding_completed, display_name, avatar_url, welcome_email_sent')
           .eq('id', user.id)
           .single()
 
         if (!profile) {
-          // No profile yet — if OAuth, create one with Google data pre-populated
-          if (isOAuth) {
-            const displayName = user.user_metadata?.full_name || user.user_metadata?.name || null
-            const avatarUrl = user.user_metadata?.avatar_url || null
-            const username = generateUsername(displayName, user.email ?? null)
-
-            await supabase
-              .from('profiles')
-              .insert({
-                id: user.id,
-                username,
-                display_name: displayName,
-                avatar_url: avatarUrl,
-              })
-
-            // New OAuth user still needs onboarding (genre picker)
-            return NextResponse.redirect(`${origin}/onboarding/genres`)
-          }
-
           return NextResponse.redirect(`${origin}/create-profile`)
         }
 
-        // Profile exists — if OAuth and missing display_name/avatar, update from Google data
-        if (isOAuth) {
+        // Send welcome email on first login ever (flag not yet set)
+        if (!profile.welcome_email_sent && user.email) {
+          // For OAuth users, backfill display_name/avatar from Google data first
+          let displayName = profile.display_name
+          const updates: Record<string, unknown> = { welcome_email_sent: true }
+
+          if (isOAuth) {
+            if (!profile.display_name) {
+              displayName = user.user_metadata?.full_name || user.user_metadata?.name || null
+              if (displayName) updates.display_name = displayName
+            }
+            if (!profile.avatar_url) {
+              const avatarUrl = user.user_metadata?.avatar_url
+              if (avatarUrl) updates.avatar_url = avatarUrl
+            }
+          }
+
+          await supabase.from('profiles').update(updates).eq('id', user.id)
+
+          await sendEmail({
+            to: user.email,
+            subject: 'Welcome to Fictionry!',
+            react: createElement(WelcomeEmail, { displayName: displayName || 'there' }),
+          })
+        } else if (isOAuth) {
+          // Returning OAuth user — still backfill missing profile fields if needed
           const updates: Record<string, string> = {}
-          
           if (!profile.display_name) {
             const displayName = user.user_metadata?.full_name || user.user_metadata?.name
             if (displayName) updates.display_name = displayName
@@ -102,12 +109,8 @@ export async function GET(request: Request) {
             const avatarUrl = user.user_metadata?.avatar_url
             if (avatarUrl) updates.avatar_url = avatarUrl
           }
-
           if (Object.keys(updates).length > 0) {
-            await supabase
-              .from('profiles')
-              .update(updates)
-              .eq('id', user.id)
+            await supabase.from('profiles').update(updates).eq('id', user.id)
           }
         }
 

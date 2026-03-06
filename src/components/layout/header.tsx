@@ -15,7 +15,6 @@ export function Header() {
   const router = useRouter()
 
   const handleLogout = async () => {
-    if (!confirm('Are you sure you want to sign out?')) return
     const supabase = createClient()
     await supabase.auth.signOut()
     router.push('/')
