@@ -2,11 +2,12 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { ChevronDown, TrendingUp, Flame, Star, Clock, Users, Award, BookOpen, Tag } from 'lucide-react'
+import { ChevronDown, TrendingUp, Flame, Star, Clock, Users, Award, BookOpen, Tag, Sparkles } from 'lucide-react'
 
 const discoverLinks = [
+  { href: '/for-you', label: 'For You', icon: Sparkles, desc: 'Stories matched to your taste' },
   { href: '/rising-stars', label: 'Rising Stars', icon: TrendingUp, desc: 'New stories gaining traction' },
-  { href: '/popular', label: 'Most Popular', icon: Flame, desc: 'All-time reader favorites' },
+  { href: '/popular', label: 'Rising Across Fictionry', icon: Flame, desc: 'Best rising stories every genre' },
   { href: '/most-followed', label: 'Most Followed', icon: Users, desc: 'Stories with the most fans' },
   { href: '/new-releases', label: 'New Releases', icon: Star, desc: 'Fresh stories just published' },
   { href: '/recently-updated', label: 'Recently Updated', icon: Clock, desc: 'Latest chapter drops' },
