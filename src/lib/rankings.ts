@@ -8,262 +8,77 @@ export type RankedStory = StoryCardData;
 export type RankingPeriod = 'daily' | 'weekly' | 'monthly' | 'all-time';
 export type RankingType = 'trending' | 'popular' | 'top-rated' | 'rising';
 
-interface RankingOptions {
-  period: RankingPeriod;
-  type: RankingType;
-  limit?: number;
-}
-
 // Helper type for Supabase client
 type SupabaseClientType = SupabaseClient<any, 'public', any>;
 
-export async function getRankings(options: RankingOptions): Promise<StoryCardData[]> {
-  const { type, limit = 50 } = options;
-  const supabase = await createClient();
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
-  // Build query based on ranking type
-  let query = supabase
-    .from('stories')
-    .select(`
-      id, slug, short_id,
-      title,
-      tagline,
-      blurb,
-      cover_url,
-      genres,
-      tags,
-      status,
-      total_views,
-      follower_count,
-      chapter_count,
-      rating_count,
-      rating_sentiment,
-      rating_confidence,
-      bayesian_rating,
-      created_at,
-      updated_at,
-      profiles!author_id(
-        username,
-        display_name
-      )
-    `)
-    .eq('visibility', 'published')
-    .gt('chapter_count', 0); // Only stories with at least one chapter
+const STORY_SELECT = `
+  id, slug, short_id, title, tagline, blurb, cover_url, primary_genre, subgenres, tags, status,
+  total_views, follower_count, chapter_count, rating_count, rating_sentiment, rating_confidence, bayesian_rating,
+  created_at, updated_at,
+  profiles!author_id(username, display_name)
+`;
 
-  // Apply sorting based on ranking type
-  switch (type) {
-    case 'trending':
-    case 'popular':
-      query = query.order('total_views', { ascending: false });
-      break;
-    case 'top-rated':
-      query = query
-        .in('rating_confidence', ['forming', 'established'])
-        .order('bayesian_rating', { ascending: false });
-      break;
-    case 'rising':
-      query = query.order('follower_count', { ascending: false });
-      break;
-  }
-
-  query = query.limit(limit);
-
-  const { data, error } = await query;
-
-  if (error) {
-    console.error('Error fetching rankings:', error);
-    return [];
-  }
-
-  return (data || []) as unknown as StoryCardData[];
+function mapRpcRow(row: any): StoryCardData {
+  return {
+    ...row,
+    profiles: {
+      username: row.author_username ?? row.username,
+      display_name: row.author_display_name ?? row.display_name,
+    },
+  } as StoryCardData;
 }
 
-export function getPeriodLabel(period: RankingPeriod): string {
-  switch (period) {
-    case 'daily':
-      return 'Today';
-    case 'weekly':
-      return 'This Week';
-    case 'monthly':
-      return 'This Month';
-    case 'all-time':
-      return 'All Time';
-  }
-}
+// ─── Homepage shelf functions ────────────────────────────────────────────────
 
-export function getTypeLabel(type: RankingType): string {
-  switch (type) {
-    case 'trending':
-      return 'Trending';
-    case 'popular':
-      return 'Most Popular';
-    case 'top-rated':
-      return 'Top Rated';
-    case 'rising':
-      return 'Rising Stars';
-  }
-}
-
-// Homepage-specific ranking functions
+/** Rising Stars — cross-genre engagement velocity, falls back to follower growth */
 export async function getRisingStars(limit: number = 10, supabase?: SupabaseClientType): Promise<StoryCardData[]> {
   const client = supabase || await createClient();
-  
-  const { data, error } = await client.rpc('get_trending_stories', { limit_count: limit });
 
-  if (error) {
-    console.error('Error fetching rising stars:', error);
-    return [];
-  }
+  const { data, error } = await client.rpc('get_cross_genre_rising', { p_limit: limit });
+  if (!error && data?.length) return data.map(mapRpcRow);
 
-  // Map RPC result to StoryCardData format (profiles nested object)
-  return (data || []).map((row: any) => ({
-    id: row.id,
-    title: row.title,
-    tagline: row.tagline,
-    blurb: row.blurb,
-    cover_url: row.cover_url,
-    genres: row.genres,
-    tags: row.tags,
-    status: row.status,
-    total_views: row.total_views,
-    follower_count: row.follower_count,
-    chapter_count: row.chapter_count,
-    rating_count: row.rating_count,
-    rating_sentiment: row.rating_sentiment,
-    rating_confidence: row.rating_confidence,
-    bayesian_rating: row.bayesian_rating,
-    created_at: row.created_at,
-    updated_at: row.updated_at,
-    profiles: {
-      username: row.author_username,
-      display_name: row.author_display_name,
-    },
-  })) as StoryCardData[];
-}
-
-export async function getPopularThisWeek(limit: number = 10, supabase?: SupabaseClientType): Promise<StoryCardData[]> {
-  const client = supabase || await createClient();
-  
-  const { data, error } = await client
+  // Fallback: recently-created stories with most followers
+  const { data: fallback } = await client
     .from('stories')
-    .select(`
-      id, slug, short_id,
-      title,
-      tagline,
-      blurb,
-      cover_url,
-      genres,
-      tags,
-      status,
-      total_views,
-      follower_count,
-      chapter_count,
-      rating_count,
-      rating_sentiment,
-      rating_confidence,
-      bayesian_rating,
-      created_at,
-      updated_at,
-      profiles!author_id(
-        username,
-        display_name
-      )
-    `)
-    .eq('visibility', 'published')
-    .gt('chapter_count', 0)
-    .order('total_views', { ascending: false })
-    .limit(limit);
-
-  if (error) {
-    console.error('Error fetching popular this week:', error);
-    return [];
-  }
-
-  return (data || []) as unknown as StoryCardData[];
-}
-
-export async function getLatestUpdates(limit: number = 10, supabase?: SupabaseClientType): Promise<StoryCardData[]> {
-  const client = supabase || await createClient();
-  
-  const { data, error } = await client
-    .from('stories')
-    .select(`
-      id, slug, short_id,
-      title,
-      tagline,
-      blurb,
-      cover_url,
-      genres,
-      tags,
-      status,
-      total_views,
-      follower_count,
-      chapter_count,
-      rating_count,
-      rating_sentiment,
-      rating_confidence,
-      bayesian_rating,
-      created_at,
-      updated_at,
-      profiles!author_id(
-        username,
-        display_name
-      )
-    `)
-    .eq('visibility', 'published')
-    .gt('chapter_count', 0)
-    .order('updated_at', { ascending: false })
-    .limit(limit);
-
-  if (error) {
-    console.error('Error fetching latest updates:', error);
-    return [];
-  }
-
-  return (data || []) as unknown as StoryCardData[];
-}
-
-export async function getMostFollowed(limit: number = 10, supabase?: SupabaseClientType): Promise<StoryCardData[]> {
-  const client = supabase || await createClient();
-  
-  const { data, error } = await client
-    .from('stories')
-    .select(`
-      id, slug, short_id,
-      title,
-      tagline,
-      blurb,
-      cover_url,
-      genres,
-      tags,
-      status,
-      total_views,
-      follower_count,
-      chapter_count,
-      rating_count,
-      rating_sentiment,
-      rating_confidence,
-      bayesian_rating,
-      created_at,
-      updated_at,
-      profiles!author_id(
-        username,
-        display_name
-      )
-    `)
+    .select(STORY_SELECT)
     .eq('visibility', 'published')
     .gt('chapter_count', 0)
     .order('follower_count', { ascending: false })
     .limit(limit);
-
-  if (error) {
-    console.error('Error fetching most followed:', error);
-    return [];
-  }
-
-  return (data || []) as unknown as StoryCardData[];
+  return (fallback || []) as unknown as StoryCardData[];
 }
 
+/** Trending This Week — per-genre trending, falls back to recent activity */
+export async function getTrendingThisWeek(limit: number = 10, supabase?: SupabaseClientType): Promise<StoryCardData[]> {
+  const client = supabase || await createClient();
+
+  // Use existing get_trending_this_week RPC if it has data
+  const { data: legacyData, error: legacyError } = await client.rpc('get_trending_this_week', { limit_count: limit });
+  if (!legacyError && legacyData?.length) {
+    return legacyData.map((row: any) => ({
+      ...row,
+      profiles: { username: row.author_username, display_name: row.author_display_name },
+    })) as StoryCardData[];
+  }
+
+  // Fallback: cross-genre rising (same data, different framing)
+  const { data } = await client.rpc('get_cross_genre_rising', { p_limit: limit });
+  if (data?.length) return data.map(mapRpcRow);
+
+  // Final fallback: views-based
+  const { data: fallback } = await client
+    .from('stories')
+    .select(STORY_SELECT)
+    .eq('visibility', 'published')
+    .gt('chapter_count', 0)
+    .order('total_views', { ascending: false })
+    .limit(limit);
+  return (fallback || []) as unknown as StoryCardData[];
+}
+
+/** New Releases — recently published, ordered by freshness */
 export async function getNewReleases(limit: number = 10, supabase?: SupabaseClientType): Promise<StoryCardData[]> {
   const client = supabase || await createClient();
 
@@ -272,53 +87,43 @@ export async function getNewReleases(limit: number = 10, supabase?: SupabaseClie
 
   const { data, error } = await client
     .from('stories')
-    .select(`
-      id, slug, short_id,
-      title,
-      tagline,
-      blurb,
-      cover_url,
-      genres,
-      tags,
-      status,
-      total_views,
-      follower_count,
-      chapter_count,
-      rating_count,
-      rating_sentiment,
-      rating_confidence,
-      bayesian_rating,
-      created_at,
-      updated_at,
-      profiles!author_id(
-        username,
-        display_name
-      )
-    `)
+    .select(STORY_SELECT)
     .eq('visibility', 'published')
     .gt('chapter_count', 0)
     .gte('created_at', sixtyDaysAgo.toISOString())
     .order('created_at', { ascending: false })
     .limit(limit);
 
-  if (error) {
-    console.error('Error fetching new releases:', error);
-    return [];
-  }
-
+  if (error) console.error('Error fetching new releases:', error);
   return (data || []) as unknown as StoryCardData[];
 }
 
+/** Latest Updates — most recently updated stories */
+export async function getLatestUpdates(limit: number = 10, supabase?: SupabaseClientType): Promise<StoryCardData[]> {
+  const client = supabase || await createClient();
+
+  const { data, error } = await client
+    .from('stories')
+    .select(STORY_SELECT)
+    .eq('visibility', 'published')
+    .gt('chapter_count', 0)
+    .order('updated_at', { ascending: false })
+    .limit(limit);
+
+  if (error) console.error('Error fetching latest updates:', error);
+  return (data || []) as unknown as StoryCardData[];
+}
+
+/** Staff Picks — editorially featured stories */
 export async function getStaffPicks(limit: number = 10, supabase?: SupabaseClientType): Promise<StoryCardData[]> {
   const client = supabase || await createClient();
-  
+
   const { data, error } = await client
     .from('featured_stories')
     .select(`
-      display_order,
-      note,
+      display_order, note,
       stories!story_id(
-        id, slug, short_id, title, tagline, blurb, cover_url, genres, tags, status,
+        id, slug, short_id, title, tagline, blurb, cover_url, primary_genre, subgenres, tags, status,
         total_views, follower_count, chapter_count, rating_count, rating_sentiment, rating_confidence, bayesian_rating,
         created_at, updated_at,
         profiles!author_id(username, display_name)
@@ -336,111 +141,64 @@ export async function getStaffPicks(limit: number = 10, supabase?: SupabaseClien
   return (data || [])
     .map((row: any) => {
       const story = Array.isArray(row.stories) ? row.stories[0] : row.stories;
-      if (!story) return null;
-      return story as StoryCardData;
+      return story || null;
     })
     .filter(Boolean) as StoryCardData[];
 }
 
+/** Stories by genre — for homepage genre shelves, uses rising RPC */
 export async function getStoriesByGenre(genre: string, limit: number = 10, supabase?: SupabaseClientType): Promise<StoryCardData[]> {
   const client = supabase || await createClient();
-  
-  const { data, error } = await client
+
+  const { data, error } = await client.rpc('get_rising_in_genre', { p_genre: genre, p_limit: limit });
+  if (!error && data?.length) return data.map(mapRpcRow);
+
+  // Fallback: direct query ordered by follower_count
+  const { data: fallback } = await client
     .from('stories')
-    .select(`
-      id, slug, short_id, title, tagline, blurb, cover_url, genres, tags, status,
-      total_views, follower_count, chapter_count, rating_count, rating_sentiment, rating_confidence, bayesian_rating,
-      created_at, updated_at,
-      profiles!author_id(username, display_name)
-    `)
+    .select(STORY_SELECT)
     .eq('visibility', 'published')
     .gt('chapter_count', 0)
-    .contains('genres', [genre])
-    .order('total_views', { ascending: false })
+    .eq('primary_genre', genre)
+    .order('follower_count', { ascending: false })
     .limit(limit);
-
-  if (error) {
-    console.error(`Error fetching stories for genre ${genre}:`, error);
-    return [];
-  }
-
-  return (data || []) as unknown as StoryCardData[];
+  return (fallback || []) as unknown as StoryCardData[];
 }
 
-export async function getTrendingThisWeek(limit: number = 10, supabase?: SupabaseClientType): Promise<StoryCardData[]> {
-  const client = supabase || await createClient();
-  
-  const { data, error } = await client.rpc('get_trending_this_week', { limit_count: limit });
-  
-  if (error) {
-    console.error('Error fetching trending this week:', error);
-    // Fallback to popular by views if RPC fails
-    return getPopularThisWeek(limit, client);
-  }
-  
-  if (!data?.length) {
-    // No reading activity data yet, fall back
-    return getPopularThisWeek(limit, client);
-  }
-  
-  return (data || []).map((row: any) => ({
-    id: row.id,
-    title: row.title,
-    tagline: row.tagline,
-    blurb: row.blurb,
-    cover_url: row.cover_url,
-    genres: row.genres,
-    tags: row.tags,
-    status: row.status,
-    total_views: row.total_views,
-    follower_count: row.follower_count,
-    chapter_count: row.chapter_count,
-    rating_count: row.rating_count,
-    rating_sentiment: row.rating_sentiment,
-    rating_confidence: row.rating_confidence,
-    bayesian_rating: row.bayesian_rating,
-    created_at: row.created_at,
-    updated_at: row.updated_at,
-    profiles: {
-      username: row.author_username,
-      display_name: row.author_display_name,
-    },
-  })) as StoryCardData[];
-}
-
+/** Fastest Growing — high velocity stories */
 export async function getFastestGrowing(limit: number = 10, supabase?: SupabaseClientType): Promise<StoryCardData[]> {
   const client = supabase || await createClient();
-  
+
   const { data, error } = await client.rpc('get_fastest_growing', { limit_count: limit });
-  
-  if (error) {
-    console.error('Error fetching fastest growing:', error);
-    return [];
+  if (!error && data?.length) {
+    return data.map((row: any) => ({
+      ...row,
+      profiles: { username: row.author_username, display_name: row.author_display_name },
+    })) as StoryCardData[];
   }
-  
-  if (!data?.length) return [];
-  
-  return (data || []).map((row: any) => ({
-    id: row.id,
-    title: row.title,
-    tagline: row.tagline,
-    blurb: row.blurb,
-    cover_url: row.cover_url,
-    genres: row.genres,
-    tags: row.tags,
-    status: row.status,
-    total_views: row.total_views,
-    follower_count: row.follower_count,
-    chapter_count: row.chapter_count,
-    rating_count: row.rating_count,
-    rating_sentiment: row.rating_sentiment,
-    rating_confidence: row.rating_confidence,
-    bayesian_rating: row.bayesian_rating,
-    created_at: row.created_at,
-    updated_at: row.updated_at,
-    profiles: {
-      username: row.author_username,
-      display_name: row.author_display_name,
-    },
-  })) as StoryCardData[];
+
+  // Fallback: cross-genre rising
+  const { data: fallback } = await client.rpc('get_cross_genre_rising', { p_limit: limit });
+  if (fallback?.length) return fallback.map(mapRpcRow);
+  return [];
+}
+
+// ─── Legacy compatibility ────────────────────────────────────────────────────
+
+export async function getRankings(): Promise<StoryCardData[]> {
+  return getRisingStars(50);
+}
+
+export function getPeriodLabel(period: RankingPeriod): string {
+  const labels: Record<RankingPeriod, string> = {
+    daily: 'Today', weekly: 'This Week', monthly: 'This Month', 'all-time': 'All Time',
+  };
+  return labels[period];
+}
+
+export function getTypeLabel(type: RankingType): string {
+  const labels: Record<RankingType, string> = {
+    trending: 'Trending', popular: 'Most Popular', 'top-rated': 'Top Rated', rising: 'Rising Stars',
+  };
+  return labels[type];
 }

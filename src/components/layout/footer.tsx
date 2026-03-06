@@ -70,6 +70,11 @@ export function Footer() {
                   Why Fictionry?
                 </Link>
               </li>
+              <li>
+                <Link href="/author-rights" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Author Rights
+                </Link>
+              </li>
             </ul>
           </div>
 

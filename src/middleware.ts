@@ -111,7 +111,7 @@ export async function middleware(request: NextRequest) {
     }
 
     // Protected routes - require auth
-    if (request.nextUrl.pathname.startsWith('/author')) {
+    if (request.nextUrl.pathname.startsWith('/author/') || request.nextUrl.pathname === '/author') {
       if (!user) {
         return NextResponse.redirect(new URL('/login', request.url))
       }

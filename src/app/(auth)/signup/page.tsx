@@ -33,7 +33,7 @@ export default function SignupPage() {
     setError(null);
     setLoading(true);
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -45,6 +45,12 @@ export default function SignupPage() {
       setError(error.message);
       setLoading(false);
       return;
+    }
+
+    // If email confirmations are disabled, Supabase returns a session immediately.
+    // In that case auth/callback never fires, so trigger the welcome email here.
+    if (data.session) {
+      void fetch("/api/welcome-email", { method: "POST" });
     }
 
     setSuccess(true);
