@@ -29,6 +29,7 @@ export default async function PopularPage({ searchParams }: PageProps) {
   const offset = (page - 1) * PAGE_SIZE;
 
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
   // Query stories directly for flexibility with ongoing filter
   let query = supabase
@@ -101,7 +102,7 @@ export default async function PopularPage({ searchParams }: PageProps) {
         </Card>
       ) : (
         <>
-          <DiscoveryStoryList stories={rankedStories} showRank surface="popular" />
+          <DiscoveryStoryList stories={rankedStories} showRank surface="popular" userId={user?.id ?? null} />
           <DiscoveryPagination
             currentPage={page}
             totalPages={totalPages}

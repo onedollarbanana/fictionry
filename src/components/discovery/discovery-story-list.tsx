@@ -9,9 +9,10 @@ interface Props {
   stories: RankedStory[];
   showRank?: boolean;
   surface?: string;
+  userId?: string | null;
 }
 
-export function DiscoveryStoryList({ stories, showRank = false, surface }: Props) {
+export function DiscoveryStoryList({ stories, showRank = false, surface, userId }: Props) {
   return (
     <div className="flex flex-col gap-3">
       {stories.map((story) => (
@@ -22,6 +23,7 @@ export function DiscoveryStoryList({ stories, showRank = false, surface }: Props
           expandable
           rank={showRank ? story.rank : undefined}
           surface={surface}
+          userId={userId}
         />
       ))}
     </div>

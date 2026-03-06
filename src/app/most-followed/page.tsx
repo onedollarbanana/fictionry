@@ -27,6 +27,7 @@ export default async function MostFollowedPage({ searchParams }: PageProps) {
   const offset = (page - 1) * PAGE_SIZE;
 
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
   let query = supabase
     .from("stories")
@@ -85,7 +86,7 @@ export default async function MostFollowedPage({ searchParams }: PageProps) {
         </Card>
       ) : (
         <>
-          <DiscoveryStoryList stories={rankedStories} showRank surface="most_followed" />
+          <DiscoveryStoryList stories={rankedStories} showRank surface="most_followed" userId={user?.id ?? null} />
           <DiscoveryPagination
             currentPage={page}
             totalPages={totalPages}

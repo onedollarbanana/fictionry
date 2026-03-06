@@ -27,6 +27,7 @@ export default async function NewReleasesPage({ searchParams }: PageProps) {
   const offset = (page - 1) * PAGE_SIZE;
 
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
   // 60 days ago
   const cutoff = new Date();
@@ -86,7 +87,7 @@ export default async function NewReleasesPage({ searchParams }: PageProps) {
         </Card>
       ) : (
         <>
-          <DiscoveryStoryList stories={typedStories} surface="new_releases" />
+          <DiscoveryStoryList stories={typedStories} surface="new_releases" userId={user?.id ?? null} />
           <DiscoveryPagination
             currentPage={page}
             totalPages={totalPages}

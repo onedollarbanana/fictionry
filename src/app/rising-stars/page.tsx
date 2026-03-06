@@ -37,6 +37,7 @@ export default async function RisingStarsPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const genre = params.genre || "";
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
   // Query story_rankings snapshot
   const today = new Date().toISOString().split("T")[0];
@@ -97,7 +98,7 @@ export default async function RisingStarsPage({ searchParams }: PageProps) {
           </CardContent>
         </Card>
       ) : (
-        <DiscoveryStoryList stories={stories} showRank surface="rising" />
+        <DiscoveryStoryList stories={stories} showRank surface="rising" userId={user?.id ?? null} />
       )}
     </div>
   );

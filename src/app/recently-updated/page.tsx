@@ -27,6 +27,7 @@ export default async function RecentlyUpdatedPage({ searchParams }: PageProps) {
   const offset = (page - 1) * PAGE_SIZE;
 
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
   let query = supabase
     .from("stories")
@@ -79,7 +80,7 @@ export default async function RecentlyUpdatedPage({ searchParams }: PageProps) {
         </Card>
       ) : (
         <>
-          <DiscoveryStoryList stories={typedStories} surface="recently_updated" />
+          <DiscoveryStoryList stories={typedStories} surface="recently_updated" userId={user?.id ?? null} />
           <DiscoveryPagination
             currentPage={page}
             totalPages={totalPages}
