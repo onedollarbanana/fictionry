@@ -48,8 +48,10 @@ export default async function TagPage({ params, searchParams }: TagPageProps) {
       total_views,
       follower_count,
       chapter_count,
-      rating_average,
       rating_count,
+      rating_sentiment,
+      rating_confidence,
+      bayesian_rating,
       created_at,
       updated_at,
       profiles!author_id(

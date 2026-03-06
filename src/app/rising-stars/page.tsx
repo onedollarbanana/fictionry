@@ -45,7 +45,7 @@ export default async function RisingStarsPage({ searchParams }: PageProps) {
     .select(
       `rank, score, stories!story_id(
         id, slug, short_id, title, tagline, blurb, cover_url, primary_genre, subgenres, tags, status,
-        total_views, follower_count, chapter_count, rating_average, rating_count,
+        total_views, follower_count, chapter_count, rating_count, rating_sentiment, rating_confidence, bayesian_rating,
         created_at, updated_at,
         profiles!author_id(username, display_name)
       )`

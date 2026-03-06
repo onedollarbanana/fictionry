@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
-import { BookOpen, Clock, Pause, CheckCircle, Archive, Library, ArrowUpDown, Star, Bell, BellOff } from 'lucide-react'
+import { BookOpen, Clock, Pause, CheckCircle, Archive, Library, ArrowUpDown, Bell, BellOff } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { formatDistanceToNow } from 'date-fns'
@@ -27,8 +27,9 @@ interface LibraryItem {
     tags: string[] | null
     wordCount: number | null
     chapterCount: number | null
-    ratingAverage: number | null
     ratingCount: number | null
+    ratingSentiment: string | null
+    ratingConfidence: string | null
     updatedAt: string
     authorUsername: string
   }
@@ -298,10 +299,9 @@ export function LibraryClient({ items: initialItems }: LibraryClientProps) {
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mb-2">
                   <span>{(item.story.chapterCount ?? 0)} chapters</span>
                   <span>{((item.story.wordCount ?? 0) / 1000).toFixed(0)}k words</span>
-                  {(item.story.ratingCount ?? 0) > 0 && (
-                    <span className="flex items-center gap-1">
-                      <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                      {(item.story.ratingAverage ?? 0).toFixed(1)}
+                  {item.story.ratingConfidence && item.story.ratingConfidence !== 'not_yet_rated' && item.story.ratingSentiment && (
+                    <span className="text-amber-600 dark:text-amber-400 font-medium">
+                      {item.story.ratingSentiment.replace('_', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}
                     </span>
                   )}
                   <span className="whitespace-nowrap">Updated {formatDistanceToNow(new Date(item.story.updatedAt))} ago</span>

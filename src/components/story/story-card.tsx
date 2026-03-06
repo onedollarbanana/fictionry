@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { BookOpen, Eye, Heart, BookMarked, Clock, Star, ChevronDown, ChevronUp } from "lucide-react";
+import { BookOpen, Eye, Heart, BookMarked, Clock, ChevronDown, ChevronUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -29,8 +29,11 @@ export interface StoryCardData {
   follower_count?: number | null;
   chapter_count?: number | null;
   word_count?: number | null;
+  // Rating — use sentiment system; rating_average kept for internal/legacy use only
   rating_average?: number | null;
   rating_count?: number | null;
+  rating_sentiment?: string | null;
+  rating_confidence?: string | null;
   communityPickMonth?: string | null;
   updated_at?: string;
   created_at?: string;
@@ -108,16 +111,43 @@ function getAuthorUsername(story: StoryCardData): string | null {
   return story.author?.username || story.profiles?.username || null;
 }
 
-// Rating display component
-function RatingDisplay({ rating, count }: { rating?: number | null; count?: number | null }) {
-  if (!rating || rating <= 0) return null;
+const SENTIMENT_SHORT: Record<string, string> = {
+  excellent: 'Excellent',
+  very_good: 'Very Good',
+  positive: 'Positive',
+  mixed: 'Mixed',
+  divisive: 'Divisive',
+  cool_reception: 'Cool Reception',
+};
+
+// Sentiment-based rating display for story cards
+function RatingDisplay({ sentiment, confidence, count }: {
+  sentiment?: string | null;
+  confidence?: string | null;
+  count?: number | null;
+}) {
+  if (!confidence || confidence === 'not_yet_rated' || !count || count === 0) return null;
+
+  const label = sentiment ? SENTIMENT_SHORT[sentiment] : null;
+  const isEarly = confidence === 'early_feedback';
+
+  // Early feedback: just show count, no sentiment label yet
+  if (isEarly) {
+    return (
+      <span className="text-xs text-zinc-400 dark:text-zinc-500" title={`${count} rating${count !== 1 ? 's' : ''} — early feedback`}>
+        {count} rating{count !== 1 ? 's' : ''}
+      </span>
+    );
+  }
+
+  if (!label) return null;
+
   return (
-    <span 
-      className="flex items-center gap-0.5 text-amber-500 font-medium" 
-      title={`${count || 0} ratings`}
+    <span
+      className="text-xs font-medium text-amber-600 dark:text-amber-400"
+      title={`${count} rating${count !== 1 ? 's' : ''}`}
     >
-      <Star className="h-3 w-3 fill-current" />
-      {Number(rating).toFixed(1)}
+      {label} · {count}
     </span>
   );
 }
@@ -282,7 +312,7 @@ export function StoryCard({
               <Heart className="h-3 w-3" />
               {formatNumber(story.follower_count ?? 0)}
             </span>
-            <RatingDisplay rating={story.rating_average} count={story.rating_count} />
+            <RatingDisplay sentiment={story.rating_sentiment} confidence={story.rating_confidence} count={story.rating_count} />
             {story.updated_at && (
               <span className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
@@ -390,10 +420,9 @@ export function StoryCard({
                 <BookMarked className="h-3 w-3" />
                 {story.chapter_count || 0}
               </span>
-              {story.rating_average && story.rating_average > 0 && (
-                <span className="flex items-center gap-1 text-amber-400">
-                  <Star className="h-3 w-3 fill-current" />
-                  {Number(story.rating_average).toFixed(1)}
+              {story.rating_sentiment && story.rating_confidence && story.rating_confidence !== 'not_yet_rated' && story.rating_confidence !== 'early_feedback' && (
+                <span className="text-amber-400 text-xs font-medium">
+                  {SENTIMENT_SHORT[story.rating_sentiment] ?? story.rating_sentiment}
                 </span>
               )}
             </div>
@@ -458,7 +487,7 @@ export function StoryCard({
               <BookMarked className="h-3 w-3" />
               {story.chapter_count || 0}
             </span>
-            <RatingDisplay rating={story.rating_average} count={story.rating_count} />
+            <RatingDisplay sentiment={story.rating_sentiment} confidence={story.rating_confidence} count={story.rating_count} />
           </div>
         )}
       </div>

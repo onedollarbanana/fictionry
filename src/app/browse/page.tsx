@@ -92,8 +92,10 @@ export default async function BrowsePage({
       total_views,
       follower_count,
       chapter_count,
-      rating_average,
       rating_count,
+      rating_sentiment,
+      rating_confidence,
+      bayesian_rating,
       updated_at,
       profiles!author_id(
         username,
@@ -175,8 +177,14 @@ export default async function BrowsePage({
         return (b.total_views ?? 0) - (a.total_views ?? 0);
       case "followers":
         return (b.follower_count ?? 0) - (a.follower_count ?? 0);
-      case "rating":
-        return (Number(b.rating_average) || 0) - (Number(a.rating_average) || 0);
+      case "rating": {
+        // Use bayesian_rating; stories without qualifying confidence sort last
+        const aHasRating = (a as any).rating_confidence === 'forming' || (a as any).rating_confidence === 'established';
+        const bHasRating = (b as any).rating_confidence === 'forming' || (b as any).rating_confidence === 'established';
+        if (bHasRating && !aHasRating) return 1;
+        if (aHasRating && !bHasRating) return -1;
+        return (Number((b as any).bayesian_rating) || 0) - (Number((a as any).bayesian_rating) || 0);
+      }
       default: // "updated"
         return new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime();
     }

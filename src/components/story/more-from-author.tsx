@@ -36,8 +36,10 @@ export async function MoreFromAuthor({
       total_views,
       follower_count,
       chapter_count,
-      rating_average,
       rating_count,
+      rating_sentiment,
+      rating_confidence,
+      bayesian_rating,
       updated_at,
       profiles!author_id(
         username,

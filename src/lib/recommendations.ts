@@ -97,8 +97,10 @@ export async function getBecauseYouRead(
         total_views: row.total_views,
         follower_count: row.follower_count,
         chapter_count: row.chapter_count,
-        rating_average: row.rating_average,
         rating_count: row.rating_count,
+        rating_sentiment: row.rating_sentiment ?? null,
+        rating_confidence: row.rating_confidence ?? null,
+        bayesian_rating: row.bayesian_rating ?? null,
         created_at: row.created_at,
         updated_at: row.updated_at,
         profiles: {
@@ -106,7 +108,7 @@ export async function getBecauseYouRead(
           display_name: row.author_display_name,
         },
       }));
-      
+
       return {
         sourceTitle: read.story_title,
         sourceId: read.story_id,
@@ -157,8 +159,10 @@ export async function getCollaborativeRecommendations(
     total_views: row.total_views,
     follower_count: row.follower_count,
     chapter_count: row.chapter_count,
-    rating_average: row.rating_average,
     rating_count: row.rating_count,
+    rating_sentiment: row.rating_sentiment ?? null,
+    rating_confidence: row.rating_confidence ?? null,
+    bayesian_rating: row.bayesian_rating ?? null,
     created_at: row.created_at,
     updated_at: row.updated_at,
     profiles: {

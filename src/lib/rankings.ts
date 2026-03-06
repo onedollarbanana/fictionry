@@ -36,8 +36,10 @@ export async function getRankings(options: RankingOptions): Promise<StoryCardDat
       total_views,
       follower_count,
       chapter_count,
-      rating_average,
       rating_count,
+      rating_sentiment,
+      rating_confidence,
+      bayesian_rating,
       created_at,
       updated_at,
       profiles!author_id(
@@ -56,8 +58,8 @@ export async function getRankings(options: RankingOptions): Promise<StoryCardDat
       break;
     case 'top-rated':
       query = query
-        .not('rating_average', 'is', null)
-        .order('rating_average', { ascending: false });
+        .in('rating_confidence', ['forming', 'established'])
+        .order('bayesian_rating', { ascending: false });
       break;
     case 'rising':
       query = query.order('follower_count', { ascending: false });
@@ -126,8 +128,10 @@ export async function getRisingStars(limit: number = 10, supabase?: SupabaseClie
     total_views: row.total_views,
     follower_count: row.follower_count,
     chapter_count: row.chapter_count,
-    rating_average: row.rating_average,
     rating_count: row.rating_count,
+    rating_sentiment: row.rating_sentiment,
+    rating_confidence: row.rating_confidence,
+    bayesian_rating: row.bayesian_rating,
     created_at: row.created_at,
     updated_at: row.updated_at,
     profiles: {
@@ -154,8 +158,10 @@ export async function getPopularThisWeek(limit: number = 10, supabase?: Supabase
       total_views,
       follower_count,
       chapter_count,
-      rating_average,
       rating_count,
+      rating_sentiment,
+      rating_confidence,
+      bayesian_rating,
       created_at,
       updated_at,
       profiles!author_id(
@@ -193,8 +199,10 @@ export async function getLatestUpdates(limit: number = 10, supabase?: SupabaseCl
       total_views,
       follower_count,
       chapter_count,
-      rating_average,
       rating_count,
+      rating_sentiment,
+      rating_confidence,
+      bayesian_rating,
       created_at,
       updated_at,
       profiles!author_id(
@@ -232,8 +240,10 @@ export async function getMostFollowed(limit: number = 10, supabase?: SupabaseCli
       total_views,
       follower_count,
       chapter_count,
-      rating_average,
       rating_count,
+      rating_sentiment,
+      rating_confidence,
+      bayesian_rating,
       created_at,
       updated_at,
       profiles!author_id(
@@ -274,8 +284,10 @@ export async function getNewReleases(limit: number = 10, supabase?: SupabaseClie
       total_views,
       follower_count,
       chapter_count,
-      rating_average,
       rating_count,
+      rating_sentiment,
+      rating_confidence,
+      bayesian_rating,
       created_at,
       updated_at,
       profiles!author_id(
@@ -307,7 +319,7 @@ export async function getStaffPicks(limit: number = 10, supabase?: SupabaseClien
       note,
       stories!story_id(
         id, slug, short_id, title, tagline, blurb, cover_url, genres, tags, status,
-        total_views, follower_count, chapter_count, rating_average, rating_count,
+        total_views, follower_count, chapter_count, rating_count, rating_sentiment, rating_confidence, bayesian_rating,
         created_at, updated_at,
         profiles!author_id(username, display_name)
       )
@@ -337,7 +349,7 @@ export async function getStoriesByGenre(genre: string, limit: number = 10, supab
     .from('stories')
     .select(`
       id, slug, short_id, title, tagline, blurb, cover_url, genres, tags, status,
-      total_views, follower_count, chapter_count, rating_average, rating_count,
+      total_views, follower_count, chapter_count, rating_count, rating_sentiment, rating_confidence, bayesian_rating,
       created_at, updated_at,
       profiles!author_id(username, display_name)
     `)
@@ -383,8 +395,10 @@ export async function getTrendingThisWeek(limit: number = 10, supabase?: Supabas
     total_views: row.total_views,
     follower_count: row.follower_count,
     chapter_count: row.chapter_count,
-    rating_average: row.rating_average,
     rating_count: row.rating_count,
+    rating_sentiment: row.rating_sentiment,
+    rating_confidence: row.rating_confidence,
+    bayesian_rating: row.bayesian_rating,
     created_at: row.created_at,
     updated_at: row.updated_at,
     profiles: {
@@ -418,8 +432,10 @@ export async function getFastestGrowing(limit: number = 10, supabase?: SupabaseC
     total_views: row.total_views,
     follower_count: row.follower_count,
     chapter_count: row.chapter_count,
-    rating_average: row.rating_average,
     rating_count: row.rating_count,
+    rating_sentiment: row.rating_sentiment,
+    rating_confidence: row.rating_confidence,
+    bayesian_rating: row.bayesian_rating,
     created_at: row.created_at,
     updated_at: row.updated_at,
     profiles: {

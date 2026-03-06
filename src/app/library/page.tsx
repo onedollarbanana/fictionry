@@ -36,8 +36,9 @@ interface FollowWithStory {
     tags: string[] | null
     word_count: number | null
     chapter_count: number | null
-    rating_average: number | null
     rating_count: number | null
+    rating_sentiment: string | null
+    rating_confidence: string | null
     updated_at: string
     profiles: {
       username: string
@@ -84,8 +85,9 @@ export default async function LibraryPage() {
         tags,
         word_count,
         chapter_count,
-        rating_average,
         rating_count,
+        rating_sentiment,
+        rating_confidence,
         updated_at,
         profiles!author_id(
           username
@@ -284,8 +286,9 @@ export default async function LibraryPage() {
         tags: f.story!.tags,
         wordCount: f.story!.word_count,
         chapterCount: f.story!.chapter_count,
-        ratingAverage: f.story!.rating_average,
         ratingCount: f.story!.rating_count,
+        ratingSentiment: f.story!.rating_sentiment,
+        ratingConfidence: f.story!.rating_confidence,
         updatedAt: f.story!.updated_at,
         authorUsername: username
       },
