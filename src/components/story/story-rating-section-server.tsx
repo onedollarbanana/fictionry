@@ -9,50 +9,74 @@ interface StoryRatingSectionServerProps {
 export async function StoryRatingSectionServer({ storyId, authorId }: StoryRatingSectionServerProps) {
   const supabase = await createClient();
 
-  // Fetch all rating data server-side in parallel
-  const [ratingsResult, userResult] = await Promise.all([
-    supabase.from('story_ratings').select('overall_rating').eq('story_id', storyId),
+  const [storyResult, userResult] = await Promise.all([
+    supabase
+      .from('stories')
+      .select('rating_sentiment, rating_confidence, rating_count, chapter_count, word_count')
+      .eq('id', storyId)
+      .single(),
     supabase.auth.getUser(),
   ]);
 
-  const ratings = ratingsResult.data;
-  const currentUserId = userResult.data?.user?.id || null;
+  const currentUserId = userResult.data?.user?.id ?? null;
+  const story = storyResult.data;
 
-  // Calculate stats
-  let stats = { averageRating: 0, ratingCount: 0 };
-  if (ratings && ratings.length > 0) {
-    const avg = ratings.reduce((sum, r) => sum + Number(r.overall_rating), 0) / ratings.length;
-    stats = { averageRating: Math.round(avg * 10) / 10, ratingCount: ratings.length };
-  }
+  const stats = {
+    sentiment: story?.rating_sentiment ?? null,
+    confidence: story?.rating_confidence ?? 'not_yet_rated',
+    ratingCount: story?.rating_count ?? 0,
+  };
 
-  // Fetch user-specific data only if logged in
-  let userRating = null;
+  let userRating: number | null = null;
+  let reviewText: string | null = null;
   let chaptersRead = 0;
+  let wordsRead = 0;
+  let reviewEligible = false;
 
   if (currentUserId) {
-    const [userRatingResult, chaptersReadResult] = await Promise.all([
-      supabase.from('story_ratings')
-        .select('overall_rating, style_rating, story_rating, grammar_rating, character_rating')
+    const [userRatingResult, chaptersReadResult, wordsReadResult] = await Promise.all([
+      supabase
+        .from('story_ratings')
+        .select('overall_rating, review_text')
         .eq('story_id', storyId)
         .eq('user_id', currentUserId)
         .maybeSingle(),
-      supabase.from('chapter_reads')
+      supabase
+        .from('chapter_reads')
         .select('id', { count: 'exact', head: true })
+        .eq('user_id', currentUserId)
+        .eq('story_id', storyId),
+      supabase
+        .from('chapter_reads')
+        .select('chapters!chapter_id(word_count)')
         .eq('user_id', currentUserId)
         .eq('story_id', storyId),
     ]);
 
-    if (userRatingResult.data) {
-      userRating = {
-        overall_rating: Number(userRatingResult.data.overall_rating),
-        style_rating: userRatingResult.data.style_rating ? Number(userRatingResult.data.style_rating) : null,
-        story_rating: userRatingResult.data.story_rating ? Number(userRatingResult.data.story_rating) : null,
-        grammar_rating: userRatingResult.data.grammar_rating ? Number(userRatingResult.data.grammar_rating) : null,
-        character_rating: userRatingResult.data.character_rating ? Number(userRatingResult.data.character_rating) : null,
-      };
-    }
-    chaptersRead = chaptersReadResult.count || 0;
+    userRating = userRatingResult.data ? Number(userRatingResult.data.overall_rating) : null;
+    reviewText = userRatingResult.data?.review_text ?? null;
+    chaptersRead = chaptersReadResult.count ?? 0;
+
+    wordsRead = ((wordsReadResult.data ?? []) as any[]).reduce((sum: number, row: any) => {
+      const wc = Array.isArray(row.chapters) ? row.chapters[0]?.word_count : row.chapters?.word_count;
+      return sum + (wc ?? 0);
+    }, 0);
+
+    const storyWords = story?.word_count ?? 0;
+    const minWordsByPctReview = Math.min(25000, Math.max(5000, Math.round(0.50 * storyWords)));
+    reviewEligible =
+      chaptersRead >= 5 ||
+      wordsRead >= 20000 ||
+      (storyWords > 0 && wordsRead >= minWordsByPctReview);
   }
+
+  // Eligibility for rating
+  const storyWords = story?.word_count ?? 0;
+  const minWordsByPct = Math.min(12000, Math.max(1500, Math.round(0.35 * storyWords)));
+  const ratingEligible =
+    chaptersRead >= 3 ||
+    wordsRead >= 6000 ||
+    (storyWords > 0 && wordsRead >= minWordsByPct);
 
   return (
     <StoryRatingSection
@@ -60,7 +84,11 @@ export async function StoryRatingSectionServer({ storyId, authorId }: StoryRatin
       authorId={authorId}
       initialStats={stats}
       initialUserRating={userRating}
+      initialReviewText={reviewText}
       initialChaptersRead={chaptersRead}
+      initialWordsRead={wordsRead}
+      initialRatingEligible={ratingEligible}
+      initialReviewEligible={reviewEligible}
       initialUserId={currentUserId}
     />
   );

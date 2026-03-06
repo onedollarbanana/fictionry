@@ -4,7 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { StatusDropdown } from './StatusDropdown'
 import { useState } from 'react'
-import { Star } from 'lucide-react'
+import { BookOpen } from 'lucide-react'
 import { getStoryUrl } from "@/lib/url-utils";
 
 interface LibraryStoryCardProps {
@@ -15,8 +15,9 @@ interface LibraryStoryCardProps {
     tagline: string | null
     cover_url: string | null
     updated_at?: string | null
-    rating_average?: number | null
     rating_count?: number | null
+    rating_sentiment?: string | null
+    rating_confidence?: string | null
     author: {
       username: string
     } | null
@@ -91,11 +92,10 @@ export function LibraryStoryCard({ story, status: initialStatus }: LibraryStoryC
         
         <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
           <span>{chapterCount} chapter{chapterCount !== 1 ? 's' : ''}</span>
-          {story.rating_average && story.rating_average > 0 && (
-            <span className="flex items-center gap-0.5 text-amber-500 font-medium">
-              <Star className="h-3 w-3 fill-current" />
-              {Number(story.rating_average).toFixed(1)}
-              <span className="text-muted-foreground font-normal">({story.rating_count || 0})</span>
+          {story.rating_confidence && story.rating_confidence !== 'not_yet_rated' && story.rating_sentiment && (
+            <span className="text-amber-600 dark:text-amber-400 font-medium">
+              {story.rating_sentiment.replace('_', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}
+              <span className="text-muted-foreground font-normal ml-1">({story.rating_count || 0})</span>
             </span>
           )}
         </div>

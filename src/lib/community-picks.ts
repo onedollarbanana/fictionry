@@ -46,8 +46,10 @@ export async function getCommunityPicksLeaderboard(
     total_views: row.totalViews,
     follower_count: row.followerCount,
     chapter_count: row.chapterCount,
-    rating_average: row.ratingAverage,
     rating_count: row.ratingCount,
+    rating_sentiment: row.ratingSentiment ?? null,
+    rating_confidence: row.ratingConfidence ?? null,
+    bayesian_rating: row.bayesianRating ?? null,
     word_count: row.wordCount,
     created_at: row.createdAt,
     updated_at: row.updatedAt,
@@ -74,7 +76,7 @@ export async function getPastCommunityPicks(
       rank,
       stories!story_id(
         id, slug, short_id, title, tagline, blurb, cover_url, genres, tags, status,
-        total_views, follower_count, chapter_count, rating_average, rating_count,
+        total_views, follower_count, chapter_count, rating_count, rating_sentiment, rating_confidence, bayesian_rating,
         word_count, created_at, updated_at,
         profiles!author_id(username, display_name)
       )

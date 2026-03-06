@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { BookOpen, Eye, Heart, Users, Star } from 'lucide-react'
+import { BookOpen, Eye, Heart, Users } from 'lucide-react'
 import { getStoryUrl } from "@/lib/url-utils";
 
 interface StoryCardCompactProps {
@@ -20,8 +20,9 @@ interface StoryCardCompactProps {
     total_views?: number | null
     total_likes?: number | null
     follower_count?: number | null
-    rating_average?: number | null
     rating_count?: number | null
+    rating_sentiment?: string | null
+    rating_confidence?: string | null
     updated_at?: string | null
     author?: {
       username?: string
@@ -130,11 +131,10 @@ export function StoryCardCompact({ story, rank, showRank = false }: StoryCardCom
               <Users className="w-3 h-3" />
               {formatNumber(story.follower_count)}
             </span>
-            {/* Rating - shown if exists */}
-            {story.rating_average && story.rating_average > 0 && (
-              <span className="flex items-center gap-0.5 ml-auto text-amber-500 font-medium" title={`${story.rating_count || 0} ratings`}>
-                <Star className="w-3 h-3 fill-current" />
-                {Number(story.rating_average).toFixed(1)}
+            {/* Rating - shown if established sentiment exists */}
+            {story.rating_confidence && story.rating_confidence !== 'not_yet_rated' && story.rating_sentiment && (
+              <span className="ml-auto text-amber-600 dark:text-amber-400 font-medium text-xs" title={`${story.rating_count || 0} ratings`}>
+                {story.rating_sentiment.replace('_', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}
               </span>
             )}
           </div>

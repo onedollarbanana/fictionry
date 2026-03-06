@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { BookOpen, Eye, Heart, BookMarked, Clock, Star, Plus, Minus, Users, Trophy } from "lucide-react";
+import { BookOpen, Eye, Heart, BookMarked, Clock, Plus, Minus, Users, Trophy } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -193,13 +193,9 @@ export function BrowseStoryCard({ story, className }: BrowseStoryCardProps) {
             <Eye className="h-3 w-3" />
             {formatNumber(story.total_views ?? 0)}
           </span>
-          {story.rating_average && Number(story.rating_average) > 0 && (
-            <span
-              className="flex items-center gap-0.5 text-amber-500 font-medium"
-              title={`${story.rating_count || 0} ratings`}
-            >
-              <Star className="h-3 w-3 fill-current" />
-              {Number(story.rating_average).toFixed(1)}
+          {story.rating_confidence && story.rating_confidence !== 'not_yet_rated' && story.rating_sentiment && (
+            <span className="text-amber-600 dark:text-amber-400 font-medium" title={`${story.rating_count || 0} ratings`}>
+              {story.rating_sentiment.replace('_', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}
             </span>
           )}
           {story.updated_at && (
