@@ -2,7 +2,7 @@ export const revalidate = 60
 import { Suspense } from 'react'
 import { createClient } from "@/lib/supabase/server";
 import { getCommunityPicksForHomepage } from "@/lib/community-picks";
-import { getRisingStars, getStoriesByGenre } from "@/lib/rankings";
+import { getBreakingOut, getStoriesByGenre } from "@/lib/rankings";
 import { HeroSection } from "@/components/home/hero-section";
 import { AnnouncementBanner } from "@/components/home/announcement-banner";
 import { GenreLinks } from "@/components/home/genre-links";
@@ -87,8 +87,8 @@ export default async function Home() {
 
   // ── LOGGED-OUT HOMEPAGE ──────────────────────────────────────────────────
   if (!isLoggedIn) {
-    const [risingStars, { count: storyCount }] = await Promise.all([
-      getRisingStars(10, supabase),
+    const [breakingOut, { count: storyCount }] = await Promise.all([
+      getBreakingOut(10, supabase),
       supabase.from('stories').select('*', { count: 'exact', head: true }).eq('visibility', 'published'),
     ]);
 
@@ -115,7 +115,7 @@ export default async function Home() {
           <StoryCarousel
             title="Breaking Out"
             icon={<Sparkles className="h-5 w-5 text-orange-500" />}
-            stories={risingStars}
+            stories={breakingOut}
             viewAllLink="/breaking-out"
             emptyMessage="Stories coming soon!"
             surface="rising"

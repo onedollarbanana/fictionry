@@ -32,8 +32,8 @@ function mapRpcRow(row: any): StoryCardData {
 
 // ─── Homepage shelf functions ────────────────────────────────────────────────
 
-/** Rising Stars — cross-genre engagement velocity, falls back to follower growth */
-export async function getRisingStars(limit: number = 10, supabase?: SupabaseClientType): Promise<StoryCardData[]> {
+/** Breaking Out — cross-genre engagement velocity, falls back to follower growth */
+export async function getBreakingOut(limit: number = 10, supabase?: SupabaseClientType): Promise<StoryCardData[]> {
   const client = supabase || await createClient();
 
   const { data, error } = await client.rpc('get_cross_genre_rising', { p_limit: limit });
@@ -186,7 +186,7 @@ export async function getFastestGrowing(limit: number = 10, supabase?: SupabaseC
 // ─── Legacy compatibility ────────────────────────────────────────────────────
 
 export async function getRankings(): Promise<StoryCardData[]> {
-  return getRisingStars(50);
+  return getBreakingOut(50);
 }
 
 export function getPeriodLabel(period: RankingPeriod): string {
@@ -198,7 +198,7 @@ export function getPeriodLabel(period: RankingPeriod): string {
 
 export function getTypeLabel(type: RankingType): string {
   const labels: Record<RankingType, string> = {
-    trending: 'Trending', popular: 'Most Popular', 'top-rated': 'Top Rated', rising: 'Rising Stars',
+    trending: 'Trending', popular: 'Most Popular', 'top-rated': 'Top Rated', rising: 'Breaking Out',
   };
   return labels[type];
 }

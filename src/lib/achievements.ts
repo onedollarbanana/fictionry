@@ -25,7 +25,7 @@ const TRACK_LABELS: Record<string, string> = {
   reading_streak: 'Reading Streak',
   publishing_streak: 'Publishing Streak',
   peak_rank: 'Peak Rank',
-  rising_stars: 'Rising Stars',
+  rising_stars: 'Breaking Out',
   weeks_top_50: 'Weeks in Top 50',
   veteran_reader: 'Veteran Reader',
   loyal_reader: 'Loyal Reader',
