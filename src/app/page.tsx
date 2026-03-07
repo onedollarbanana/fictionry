@@ -36,13 +36,13 @@ export const metadata: Metadata = {
 };
 
 const GENRE_SHELVES = [
-  { name: 'Fantasy', icon: <Sword className="h-5 w-5 text-purple-500" />, color: 'text-purple-500' },
-  { name: 'Sci-Fi', icon: <Rocket className="h-5 w-5 text-cyan-500" />, color: 'text-cyan-500' },
-  { name: 'Romance', icon: <Heart className="h-5 w-5 text-pink-500" />, color: 'text-pink-500' },
-  { name: 'Mystery', icon: <Search className="h-5 w-5 text-slate-500" />, color: 'text-slate-500' },
-  { name: 'Horror', icon: <Skull className="h-5 w-5 text-red-500" />, color: 'text-red-500' },
-  { name: 'LitRPG', icon: <Gamepad2 className="h-5 w-5 text-emerald-500" />, color: 'text-emerald-500' },
-  { name: 'Historical', icon: <Scroll className="h-5 w-5 text-amber-500" />, color: 'text-amber-500' },
+  { name: 'Fantasy', slug: 'fantasy', icon: <Sword className="h-5 w-5 text-purple-500" /> },
+  { name: 'Science Fiction', slug: 'science-fiction', icon: <Rocket className="h-5 w-5 text-cyan-500" /> },
+  { name: 'Romance', slug: 'romance', icon: <Heart className="h-5 w-5 text-pink-500" /> },
+  { name: 'Thriller & Mystery', slug: 'thriller-mystery', icon: <Search className="h-5 w-5 text-slate-500" /> },
+  { name: 'Horror', slug: 'horror', icon: <Skull className="h-5 w-5 text-red-500" /> },
+  { name: 'LitRPG', slug: 'litrpg', icon: <Gamepad2 className="h-5 w-5 text-emerald-500" /> },
+  { name: 'Historical Fiction', slug: 'historical-fiction', icon: <Scroll className="h-5 w-5 text-amber-500" /> },
 ];
 
 export default async function Home() {
@@ -116,7 +116,7 @@ export default async function Home() {
   const userGenrePreferences = await getUserGenreOrder(user!.id, supabase);
 
   const genreResults = await Promise.all(
-    GENRE_SHELVES.map(g => getStoriesByGenre(g.name, 10, supabase))
+    GENRE_SHELVES.map(g => getStoriesByGenre(g.slug, 10, supabase))
   );
 
   const genreShelvesWithData = GENRE_SHELVES.map((genre, index) => ({
@@ -128,8 +128,8 @@ export default async function Home() {
   let otherShelves: typeof genreShelvesWithData;
 
   if (userGenrePreferences.length > 0) {
-    preferredShelves = genreShelvesWithData.filter(g => userGenrePreferences.includes(g.name));
-    otherShelves = genreShelvesWithData.filter(g => !userGenrePreferences.includes(g.name));
+    preferredShelves = genreShelvesWithData.filter(g => userGenrePreferences.includes(g.slug));
+    otherShelves = genreShelvesWithData.filter(g => !userGenrePreferences.includes(g.slug));
   } else {
     preferredShelves = genreShelvesWithData;
     otherShelves = [];
@@ -173,7 +173,7 @@ export default async function Home() {
             title={`Breaking Out in ${genre.name}`}
             icon={genre.icon}
             stories={genre.stories}
-            viewAllLink={`/browse/genre/${genre.name.toLowerCase()}`}
+            viewAllLink={`/browse/genre/${genre.slug}`}
             surface="homepage"
           />
         ))}
@@ -193,7 +193,7 @@ export default async function Home() {
                 title={genre.name}
                 icon={genre.icon}
                 stories={genre.stories}
-                viewAllLink={`/browse/genre/${genre.name.toLowerCase()}`}
+                viewAllLink={`/browse/genre/${genre.slug}`}
                 surface="homepage"
               />
             ))}
