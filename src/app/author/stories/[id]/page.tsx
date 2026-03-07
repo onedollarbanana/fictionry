@@ -17,7 +17,7 @@ interface Story {
   title: string;
   blurb: string | null;
   status: string;
-  genres: string[];
+  primary_genre: string | null;
   tags: string[];
   chapter_count: number | null;
   word_count: number | null;
