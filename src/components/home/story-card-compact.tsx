@@ -9,12 +9,14 @@ import { useImpressionLogger } from "@/hooks/useImpressionLogger";
 interface StoryCardCompactProps {
   story: {
     id: string
-  slug?: string | null;
-  short_id?: string | null;
+    slug?: string | null;
+    short_id?: string | null;
     title: string
     blurb?: string | null
     tagline?: string | null
     cover_url?: string | null
+    primary_genre?: string | null
+    subgenres?: string[] | null
     genres?: string[] | null
     tags?: string[] | null
     chapter_count?: number | null
@@ -87,9 +89,9 @@ export function StoryCardCompact({ story, rank, showRank = false, surface }: Sto
             <h3 className="font-semibold text-sm line-clamp-2 leading-tight group-hover:text-primary transition-colors min-h-[2.5rem]">
               {story.title}
             </h3>
-            {story.author && (
+            {(story.author || story.profiles) && (
               <p className="text-muted-foreground text-xs mt-0.5 truncate">
-                by {story.author.username}
+                by {story.author?.display_name || story.author?.username || story.profiles?.display_name || story.profiles?.username}
               </p>
             )}
           </div>
@@ -102,14 +104,22 @@ export function StoryCardCompact({ story, rank, showRank = false, surface }: Sto
           )}
           
           {/* Genres & Tags */}
-          {(story.genres?.length || story.tags?.length) ? (
+          {(story.primary_genre || story.genres?.length || story.tags?.length) ? (
             <div className="flex flex-wrap gap-1">
-              {story.genres?.slice(0, 2).map(genre => (
-                <span key={genre} className="text-[10px] bg-primary/15 text-primary px-1.5 py-0.5 rounded font-medium">
-                  {genre}
+              {/* Primary genre — prefer v3 primary_genre, fall back to legacy genres[0] */}
+              {(story.primary_genre || story.genres?.[0]) && (
+                <span className="text-[10px] bg-primary/15 text-primary px-1.5 py-0.5 rounded font-medium capitalize">
+                  {(story.primary_genre || story.genres![0]).replace(/-/g, ' ')}
                 </span>
-              ))}
-              {story.tags?.slice(0, 2).map(tag => (
+              )}
+              {/* First subgenre */}
+              {story.subgenres?.[0] && (
+                <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded capitalize">
+                  {story.subgenres[0].replace(/-/g, ' ')}
+                </span>
+              )}
+              {/* Tags — only if no subgenres to keep compact */}
+              {!story.subgenres?.length && story.tags?.slice(0, 1).map(tag => (
                 <span key={tag} className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
                   {tag}
                 </span>

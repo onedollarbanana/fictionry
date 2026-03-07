@@ -18,15 +18,15 @@ const statusColors: Record<string, string> = {
 };
 
 const genreGradients: Record<string, string> = {
-  Fantasy: "from-purple-600/30 to-purple-900/50",
-  "Sci-Fi": "from-cyan-600/30 to-cyan-900/50",
-  Romance: "from-pink-600/30 to-pink-900/50",
-  Mystery: "from-slate-600/30 to-slate-900/50",
-  Horror: "from-red-800/30 to-red-950/50",
-  LitRPG: "from-emerald-600/30 to-emerald-900/50",
-  Historical: "from-amber-600/30 to-amber-900/50",
-  Adventure: "from-orange-600/30 to-orange-900/50",
-  Thriller: "from-gray-600/30 to-gray-900/50",
+  "fantasy": "from-purple-600/30 to-purple-900/50",
+  "science-fiction": "from-cyan-600/30 to-cyan-900/50",
+  "romance": "from-pink-600/30 to-pink-900/50",
+  "thriller-mystery": "from-slate-600/30 to-slate-900/50",
+  "horror": "from-red-800/30 to-red-950/50",
+  "litrpg": "from-emerald-600/30 to-emerald-900/50",
+  "historical-fiction": "from-amber-600/30 to-amber-900/50",
+  "action-adventure": "from-orange-600/30 to-orange-900/50",
+  "contemporary-fiction": "from-gray-600/30 to-gray-900/50",
 };
 
 function formatNumber(num: number): string {
@@ -56,8 +56,8 @@ interface BrowseStoryCardProps {
 export function BrowseStoryCard({ story, className, surface }: BrowseStoryCardProps) {
   const [expanded, setExpanded] = useState(false);
   const cardRef = useImpressionLogger(story.id, surface ?? '');
-  const primaryGenre = story.genres?.[0] || "Fantasy";
-  const gradientClass = genreGradients[primaryGenre] || genreGradients.Fantasy;
+  const primaryGenreSlug = story.primary_genre || story.genres?.[0]?.toLowerCase().replace(/ /g, '-') || "fantasy";
+  const gradientClass = genreGradients[primaryGenreSlug] || "from-purple-600/30 to-purple-900/50";
   const authorUsername = getAuthorUsername(story);
   const imageTimestamp = story.updated_at
     ? new Date(story.updated_at).getTime()
@@ -68,10 +68,16 @@ export function BrowseStoryCard({ story, className, surface }: BrowseStoryCardPr
   const visibleTags = expanded ? allTags : allTags.slice(0, MAX_VISIBLE_TAGS);
   const hiddenTagCount = allTags.length - MAX_VISIBLE_TAGS;
 
+  // Build genre list from v3 taxonomy (primary_genre + subgenres), fall back to legacy genres
   const MAX_VISIBLE_GENRES = 3;
-  const allGenres = story.genres || [];
-  const visibleGenres = expanded ? allGenres : allGenres.slice(0, MAX_VISIBLE_GENRES);
-  const hiddenGenreCount = allGenres.length - MAX_VISIBLE_GENRES;
+  const genreItems: { slug: string; label: string }[] = story.primary_genre
+    ? [
+        { slug: story.primary_genre, label: story.primary_genre.replace(/-/g, ' ') },
+        ...(story.subgenres || []).map(s => ({ slug: s, label: s.replace(/-/g, ' ') })),
+      ]
+    : (story.genres || []).map(g => ({ slug: g.toLowerCase().replace(/ /g, '-'), label: g }));
+  const visibleGenres = expanded ? genreItems : genreItems.slice(0, MAX_VISIBLE_GENRES);
+  const hiddenGenreCount = genreItems.length - MAX_VISIBLE_GENRES;
 
   return (
     <div
@@ -163,12 +169,12 @@ export function BrowseStoryCard({ story, className, surface }: BrowseStoryCardPr
         </div>
 
         {/* Genres */}
-        {allGenres.length > 0 && (
+        {genreItems.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-2">
             {visibleGenres.map((genre) => (
-              <Link key={genre} href={`/browse/genre/${encodeURIComponent(genre)}`}>
-                <Badge variant="secondary" className="text-xs hover:bg-secondary/80 cursor-pointer">
-                  {genre}
+              <Link key={genre.slug} href={`/browse/genre/${genre.slug}`}>
+                <Badge variant="secondary" className="text-xs hover:bg-secondary/80 cursor-pointer capitalize">
+                  {genre.label}
                 </Badge>
               </Link>
             ))}
