@@ -6,13 +6,17 @@ import type { StoryCardData } from '@/components/story/story-card';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-export async function PersonalizedShelves({ userId }: { userId: string }) {
+const STORY_SELECT = `
+  id, slug, short_id, title, tagline, cover_url, primary_genre, subgenres, tags, status,
+  total_views, follower_count, chapter_count, rating_count, rating_sentiment, rating_confidence, bayesian_rating,
+  created_at, updated_at, profiles!author_id(username, display_name)
+`;
+
+export async function PersonalizedShelves({ userId, preferredGenreSlugs }: { userId: string; preferredGenreSlugs: string[] }) {
   const supabase = await createClient();
 
-  const { getCollaborativeRecommendations } = await import('@/lib/recommendations');
-
   // Fetch all user-specific data in parallel
-  const [progressData, collabRecommendations, newChaptersData] = await Promise.all([
+  const [progressData, followsData, newChaptersData] = await Promise.all([
     supabase
       .from("reading_progress")
       .select(`
@@ -37,7 +41,12 @@ export async function PersonalizedShelves({ userId }: { userId: string }) {
       .order("updated_at", { ascending: false })
       .limit(10)
       .then(res => res.data),
-    getCollaborativeRecommendations(userId, 10, supabase),
+    // Stories user already follows (to exclude from recommendations)
+    supabase
+      .from('follows')
+      .select('story_id')
+      .eq('user_id', userId)
+      .then(res => res.data || []),
     // New chapters in followed stories since user last read them
     supabase.rpc('get_new_chapters_in_library', { p_user_id: userId, p_limit: 10 })
       .then(res => res.data || []),
@@ -141,6 +150,33 @@ export async function PersonalizedShelves({ userId }: { userId: string }) {
     profiles: { username: r.author_username, display_name: r.author_display_name },
   }));
 
+  // Fetch "Recommended For You": stories in preferred genres not yet followed, with quality threshold
+  let recommendedStories: StoryCardData[] = [];
+  if (preferredGenreSlugs.length > 0) {
+    const followedIds = (followsData as any[]).map((f: any) => f.story_id);
+
+    let query = supabase
+      .from('stories')
+      .select(STORY_SELECT)
+      .eq('visibility', 'published')
+      .in('primary_genre', preferredGenreSlugs)
+      .or('follower_count.gte.50,rating_count.gte.10')
+      .order('follower_count', { ascending: false })
+      .limit(10);
+
+    if (followedIds.length > 0) {
+      query = query.not('id', 'in', `(${followedIds.join(',')})`);
+    }
+
+    const { data: recData } = await query;
+    if (recData) {
+      recommendedStories = recData.map((r: any) => ({
+        ...r,
+        profiles: Array.isArray(r.profiles) ? r.profiles[0] : r.profiles,
+      }));
+    }
+  }
+
   return (
     <>
       {/* Continue Reading - only for logged-in users */}
@@ -158,12 +194,12 @@ export async function PersonalizedShelves({ userId }: { userId: string }) {
       )}
 
       {/* Recommended For You */}
-      {collabRecommendations.length > 0 && (
+      {recommendedStories.length > 0 && (
         <StoryCarousel
           title="Recommended For You"
           icon={<Users className="h-5 w-5 text-violet-500" />}
-          stories={collabRecommendations}
-          viewAllLink="/for-you"
+          stories={recommendedStories}
+          viewAllLink="/browse"
         />
       )}
     </>
