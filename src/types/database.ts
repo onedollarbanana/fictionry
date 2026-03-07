@@ -34,8 +34,6 @@ export interface Story {
   relationship_tags: string[]
   primary_genre_change_count: number
   primary_genre_changed_at: string | null
-  // Legacy — preserved during migration; prefer primary_genre
-  genres: string[]
   // Stats
   total_views: number
   total_likes: number

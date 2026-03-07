@@ -46,16 +46,16 @@ export default async function GenresPage() {
   // Get story counts per genre
   const { data: stories } = await supabase
     .from('stories')
-    .select('genres')
+    .select('primary_genre')
     .eq('visibility', 'published')
     .gt('chapter_count', 0);
 
-  // Count stories per genre
+  // Count stories per genre (one count per story)
   const genreCounts: Record<string, number> = {};
   stories?.forEach((story) => {
-    story.genres?.forEach((genre: string) => {
-      genreCounts[genre] = (genreCounts[genre] || 0) + 1;
-    });
+    if (story.primary_genre) {
+      genreCounts[story.primary_genre] = (genreCounts[story.primary_genre] || 0) + 1;
+    }
   });
 
   // Sort genres by count

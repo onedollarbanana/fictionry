@@ -5,20 +5,22 @@ import { Sparkles } from 'lucide-react';
 
 interface RelatedStoriesProps {
   storyId: string;
-  genres: string[];
+  primaryGenre: string | null;
   authorId: string;
   limit?: number;
 }
 
-export async function RelatedStories({ 
-  storyId, 
-  genres, 
+export async function RelatedStories({
+  storyId,
+  primaryGenre,
   authorId,
-  limit = 4 
+  limit = 4
 }: RelatedStoriesProps) {
+  if (!primaryGenre) return null;
+
   const supabase = await createClient();
 
-  // Find stories with overlapping genres, excluding current story and same author
+  // Find stories in the same primary genre, excluding current story and same author
   const { data: stories, error } = await supabase
     .from('stories')
     .select(`
@@ -27,7 +29,8 @@ export async function RelatedStories({
       tagline,
       blurb,
       cover_url,
-      genres,
+      primary_genre,
+      subgenres,
       tags,
       status,
       total_views,
@@ -46,7 +49,7 @@ export async function RelatedStories({
     .eq('visibility', 'published')
     .neq('id', storyId)
     .neq('author_id', authorId)
-    .overlaps('genres', genres)
+    .eq('primary_genre', primaryGenre)
     .gt('chapter_count', 0)
     .order('total_views', { ascending: false })
     .limit(limit);

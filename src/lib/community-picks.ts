@@ -40,7 +40,6 @@ export async function getCommunityPicksLeaderboard(
     tagline: row.tagline,
     blurb: row.blurb,
     cover_url: row.coverUrl,
-    genres: row.genres,
     tags: row.tags,
     status: row.status,
     total_views: row.totalViews,
@@ -75,7 +74,7 @@ export async function getPastCommunityPicks(
       vote_count,
       rank,
       stories!story_id(
-        id, slug, short_id, title, tagline, blurb, cover_url, genres, tags, status,
+        id, slug, short_id, title, tagline, blurb, cover_url, primary_genre, subgenres, tags, status,
         total_views, follower_count, chapter_count, rating_count, rating_sentiment, rating_confidence, bayesian_rating,
         word_count, created_at, updated_at,
         profiles!author_id(username, display_name)

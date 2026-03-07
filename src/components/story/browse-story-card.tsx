@@ -56,7 +56,7 @@ interface BrowseStoryCardProps {
 export function BrowseStoryCard({ story, className, surface }: BrowseStoryCardProps) {
   const [expanded, setExpanded] = useState(false);
   const cardRef = useImpressionLogger(story.id, surface ?? '');
-  const primaryGenreSlug = story.primary_genre || story.genres?.[0]?.toLowerCase().replace(/ /g, '-') || "fantasy";
+  const primaryGenreSlug = story.primary_genre || "fantasy";
   const gradientClass = genreGradients[primaryGenreSlug] || "from-purple-600/30 to-purple-900/50";
   const authorUsername = getAuthorUsername(story);
   const imageTimestamp = story.updated_at
@@ -68,14 +68,14 @@ export function BrowseStoryCard({ story, className, surface }: BrowseStoryCardPr
   const visibleTags = expanded ? allTags : allTags.slice(0, MAX_VISIBLE_TAGS);
   const hiddenTagCount = allTags.length - MAX_VISIBLE_TAGS;
 
-  // Build genre list from v3 taxonomy (primary_genre + subgenres), fall back to legacy genres
+  // Build genre list from v3 taxonomy (primary_genre + subgenres)
   const MAX_VISIBLE_GENRES = 3;
   const genreItems: { slug: string; label: string }[] = story.primary_genre
     ? [
         { slug: story.primary_genre, label: story.primary_genre.replace(/-/g, ' ') },
         ...(story.subgenres || []).map(s => ({ slug: s, label: s.replace(/-/g, ' ') })),
       ]
-    : (story.genres || []).map(g => ({ slug: g.toLowerCase().replace(/ /g, '-'), label: g }));
+    : [];
   const visibleGenres = expanded ? genreItems : genreItems.slice(0, MAX_VISIBLE_GENRES);
   const hiddenGenreCount = genreItems.length - MAX_VISIBLE_GENRES;
 

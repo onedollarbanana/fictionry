@@ -23,7 +23,8 @@ interface LibraryItem {
     tagline: string | null
     coverUrl: string | null
     status: string
-    genres: string[] | null
+    primary_genre: string | null
+    subgenres: string[] | null
     tags: string[] | null
     wordCount: number | null
     chapterCount: number | null

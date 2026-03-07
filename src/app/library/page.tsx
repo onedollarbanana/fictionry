@@ -32,7 +32,8 @@ interface FollowWithStory {
     tagline: string | null
     cover_url: string | null
     status: string
-    genres: string[] | null
+    primary_genre: string | null
+    subgenres: string[] | null
     tags: string[] | null
     word_count: number | null
     chapter_count: number | null
@@ -81,7 +82,8 @@ export default async function LibraryPage() {
         tagline,
         cover_url,
         status,
-        genres,
+        primary_genre,
+        subgenres,
         tags,
         word_count,
         chapter_count,
@@ -282,7 +284,8 @@ export default async function LibraryPage() {
         tagline: f.story!.tagline,
         coverUrl: f.story!.cover_url,
         status: f.story!.status,
-        genres: f.story!.genres,
+        primary_genre: f.story!.primary_genre,
+        subgenres: f.story!.subgenres,
         tags: f.story!.tags,
         wordCount: f.story!.word_count,
         chapterCount: f.story!.chapter_count,

@@ -639,9 +639,9 @@ export default async function StoryPage({ params }: PageProps) {
       />
 
       {/* Related Stories */}
-      <RelatedStories 
+      <RelatedStories
         storyId={storyId}
-        genres={story.genres || []}
+        primaryGenre={story.primary_genre ?? null}
         authorId={story.author_id}
       />
     </div>

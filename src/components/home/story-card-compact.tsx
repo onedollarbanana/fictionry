@@ -17,7 +17,6 @@ interface StoryCardCompactProps {
     cover_url?: string | null
     primary_genre?: string | null
     subgenres?: string[] | null
-    genres?: string[] | null
     tags?: string[] | null
     chapter_count?: number | null
     total_views?: number | null
@@ -104,12 +103,11 @@ export function StoryCardCompact({ story, rank, showRank = false, surface }: Sto
           )}
           
           {/* Genres & Tags */}
-          {(story.primary_genre || story.genres?.length || story.tags?.length) ? (
+          {(story.primary_genre || story.tags?.length) ? (
             <div className="flex flex-wrap gap-1">
-              {/* Primary genre — prefer v3 primary_genre, fall back to legacy genres[0] */}
-              {(story.primary_genre || story.genres?.[0]) && (
+              {story.primary_genre && (
                 <span className="text-[10px] bg-primary/15 text-primary px-1.5 py-0.5 rounded font-medium capitalize">
-                  {(story.primary_genre || story.genres![0]).replace(/-/g, ' ')}
+                  {story.primary_genre.replace(/-/g, ' ')}
                 </span>
               )}
               {/* First subgenre */}

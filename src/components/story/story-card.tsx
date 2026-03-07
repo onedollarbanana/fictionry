@@ -22,8 +22,6 @@ export interface StoryCardData {
   primary_genre?: string | null;
   subgenres?: string[];
   content_rating?: string | null;
-  // Legacy (kept for compat during migration)
-  genres?: string[];
   tags?: string[];
   status?: string;
   total_views?: number | null;
@@ -172,7 +170,7 @@ export function StoryCard({
   surface,
   userId,
 }: StoryCardProps) {
-  const primaryGenreSlug = story.primary_genre || story.genres?.[0] || "fantasy";
+  const primaryGenreSlug = story.primary_genre || "fantasy";
   const gradientClass = genreGradients[primaryGenreSlug] || "from-purple-600/30 to-purple-900/50";
   const linkHref = href || getStoryUrl(story);
   const authorUsername = getAuthorUsername(story);

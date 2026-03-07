@@ -108,7 +108,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       stories (
         title,
         cover_url,
-        genres,
+        primary_genre,
         slug,
         short_id,
         profiles!author_id(
@@ -128,7 +128,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const story = chapter.stories as any;
   const authorName = story.profiles?.display_name || story.profiles?.username || "Unknown";
   const title = `${chapter.title} — ${story.title} by ${authorName} | Fictionry`;
-  const genreLabel = story.genres && story.genres.length > 0 ? ` — ${story.genres[0]} Fiction` : "";
+  const genreLabel = story.primary_genre ? ` — ${story.primary_genre.replace(/-/g, ' ')} Fiction` : "";
   const description = `Read Chapter ${chapter.chapter_number}: ${chapter.title} from ${story.title} by ${authorName}${genreLabel} on Fictionry`;
 
   const ogParams = new URLSearchParams();
@@ -136,7 +136,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   ogParams.set("author", authorName);
   if (story.cover_url) ogParams.set("cover", story.cover_url);
   ogParams.set("description", `From ${story.title}`);
-  if (story.genres && story.genres.length > 0) ogParams.set("genre", story.genres[0]);
+  if (story.primary_genre) ogParams.set("genre", story.primary_genre);
 
   const ogImageUrl = `https://www.fictionry.com/api/og?${ogParams.toString()}`;
 
