@@ -319,6 +319,7 @@ export function ContinuousScrollReader({
                   if (el) chapterRefs.current.set(chapter.id, el)
                 }}
                 data-chapter-id={chapter.id}
+                data-chapter-number={chapter.chapterNumber}
                 className="h-0"
               />
               {/* Read sentinel for the initial server-rendered chapter.
@@ -370,6 +371,7 @@ export function ContinuousScrollReader({
                 if (el) chapterRefs.current.set(chapter.id, el)
               }}
               data-chapter-id={chapter.id}
+              data-chapter-number={chapter.chapterNumber}
             >
               <header className="mb-8">
                 <h1 className="text-2xl md:text-3xl font-bold">{chapter.title}</h1>

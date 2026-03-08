@@ -37,6 +37,8 @@ export function KeyboardNavigation({ storyUrl, prevChapterUrl, nextChapterUrl }:
           }
           break
         case 'Escape':
+          // Don't navigate if a Radix dialog/sheet/popover is open — let it close first
+          if (document.querySelector('[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]')) return
           e.preventDefault()
           router.push(storyUrl)
           break

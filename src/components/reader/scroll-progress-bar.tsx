@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
 export function ScrollProgressBar() {
   const [progress, setProgress] = useState(0)
   const [isVisible, setIsVisible] = useState(false)
   const [chapterLabel, setChapterLabel] = useState('')
+  const mutationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const calculateProgress = useCallback(() => {
     const scrollTop = window.scrollY
@@ -50,8 +51,9 @@ export function ScrollProgressBar() {
           ? Math.min(100, Math.max(0, (chapterScrolled / elHeight) * 100))
           : 0
 
+        const chapterNum = (currentChapter as HTMLElement).dataset.chapterNumber
         setProgress(chapterProgress)
-        setChapterLabel(`Ch. ${currentIdx + 1}`)
+        setChapterLabel(chapterNum ? `Ch. ${chapterNum}` : `Ch. ${currentIdx + 1}`)
       }
     } else {
       // Single chapter (paged mode): track total page progress
@@ -66,15 +68,18 @@ export function ScrollProgressBar() {
     calculateProgress()
     window.addEventListener('scroll', calculateProgress, { passive: true })
     
-    // Recalculate when DOM changes (new chapters loaded in continuous mode)
+    // Recalculate when DOM changes (new chapters loaded in continuous mode).
+    // Debounced to avoid thrashing on large subtree mutations (e.g. Tiptap rendering).
     const observer = new MutationObserver(() => {
-      calculateProgress()
+      if (mutationTimerRef.current) clearTimeout(mutationTimerRef.current)
+      mutationTimerRef.current = setTimeout(calculateProgress, 150)
     })
     observer.observe(document.body, { childList: true, subtree: true })
 
     return () => {
       window.removeEventListener('scroll', calculateProgress)
       observer.disconnect()
+      if (mutationTimerRef.current) clearTimeout(mutationTimerRef.current)
     }
   }, [calculateProgress])
 
