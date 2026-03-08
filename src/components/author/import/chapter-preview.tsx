@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import DOMPurify from "dompurify"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { X, ChevronUp, ChevronDown, AlertTriangle } from "lucide-react"
@@ -21,38 +22,17 @@ interface ChapterPreviewProps {
 }
 
 /**
- * Sanitize HTML to remove dangerous elements (scripts, event handlers, etc.)
- * Uses the browser's built-in DOMParser — no external dependency needed.
+ * Sanitize HTML from DOCX import using DOMPurify.
+ * Strips scripts, event handlers, unsafe attributes, and dangerous tags.
+ * Only runs in the browser (DOMPurify requires a DOM environment).
  */
 function sanitizeHtml(html: string): string {
-  if (typeof window === 'undefined') return html
-
-  const parser = new DOMParser()
-  const doc = parser.parseFromString(html, 'text/html')
-
-  // Remove script tags
-  doc.querySelectorAll('script').forEach((el) => el.remove())
-  // Remove style tags (CSS injection vector)
-  doc.querySelectorAll('style').forEach((el) => el.remove())
-
-  // Remove dangerous elements and event handler attributes
-  const allElements = doc.body.querySelectorAll('*')
-  allElements.forEach((el) => {
-    // Remove dangerous tags entirely
-    if (['iframe', 'object', 'embed', 'form', 'input', 'textarea', 'base', 'meta', 'link'].includes(el.tagName.toLowerCase())) {
-      el.remove()
-      return
-    }
-    // Remove event handlers and javascript: URLs
-    const attrs = Array.from(el.attributes)
-    attrs.forEach((attr) => {
-      if (attr.name.startsWith('on') || attr.value.startsWith('javascript:')) {
-        el.removeAttribute(attr.name)
-      }
-    })
+  if (typeof window === 'undefined') return ''
+  return DOMPurify.sanitize(html, {
+    USE_PROFILES: { html: true },
+    FORBID_TAGS: ['style', 'iframe', 'object', 'embed', 'form', 'input', 'textarea', 'base', 'meta', 'link'],
+    FORBID_ATTR: ['style'],
   })
-
-  return doc.body.innerHTML
 }
 
 export function ChapterPreview({

@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase-admin';
+import { checkRateLimit } from '@/lib/rate-limit';
 import { createNotification } from '@/lib/create-notification';
 import { sendEmail } from '@/lib/send-email';
 import { CommentReplyEmail } from '@/components/emails/comment-reply-email';
@@ -19,6 +20,12 @@ export async function POST(request: Request) {
 
   if (!chapter_id || !content?.trim()) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+  }
+
+  // Rate limit: 20 comments per hour
+  const rateLimit = await checkRateLimit(supabase, user.id, 'comment');
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: rateLimit.message }, { status: 429 });
   }
 
   // Insert the comment using the user's own client (respects RLS)

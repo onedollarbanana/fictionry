@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase-admin';
+import { checkRateLimit } from '@/lib/rate-limit';
 import { createNotification } from '@/lib/create-notification';
 import { sendEmail } from '@/lib/send-email';
 import { NewReviewEmail } from '@/components/emails/new-review-email';
@@ -19,6 +20,12 @@ export async function POST(request: Request) {
 
   if (!story_id || !overall_rating) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+  }
+
+  // Rate limit: 5 ratings per hour
+  const rateLimit = await checkRateLimit(supabase, user.id, 'review');
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: rateLimit.message }, { status: 429 });
   }
 
   // Fetch story metadata and user's reading depth in parallel

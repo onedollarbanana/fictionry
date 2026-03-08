@@ -1,12 +1,13 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 
-export type RateLimitAction = 
+export type RateLimitAction =
   | 'comment'
-  | 'review' 
+  | 'review'
   | 'report'
   | 'follow'
   | 'ticket'
   | 'chapter_publish'
+  | 'announcement'
 
 // Rate limit configs: [max_count, window_minutes]
 const RATE_LIMITS: Record<RateLimitAction, [number, number]> = {
@@ -16,6 +17,7 @@ const RATE_LIMITS: Record<RateLimitAction, [number, number]> = {
   follow: [30, 60],           // 30 follows per hour
   ticket: [5, 60],            // 5 tickets per hour
   chapter_publish: [10, 60],  // 10 chapter publishes per hour
+  announcement: [5, 60],      // 5 announcements per hour (each sends emails to all followers)
 }
 
 export async function checkRateLimit(

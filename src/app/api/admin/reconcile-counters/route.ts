@@ -10,7 +10,12 @@ function getAdminSupabase() {
   );
 }
 
-export async function POST() {
+export async function POST(request: Request) {
+  const cronSecret = process.env.CRON_SECRET;
+  const authHeader = request.headers.get('authorization');
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   const supabase = getAdminSupabase();
   
   const { data, error } = await supabase.rpc('reconcile_story_counters');

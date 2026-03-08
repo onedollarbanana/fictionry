@@ -32,8 +32,8 @@ export async function GET(request: NextRequest) {
   }
   // all_time: startDate stays null
 
-  // Fetch transactions
-  let txQuery = supabase.from('transactions').select('*');
+  // Fetch transactions (capped at 10,000 rows — use a tighter period filter for all-time if this is hit)
+  let txQuery = supabase.from('transactions').select('*').limit(10000);
   if (startDate) {
     txQuery = txQuery.gte('created_at', startDate);
   }
@@ -73,8 +73,8 @@ export async function GET(request: NextRequest) {
     .sort((a, b) => b[0].localeCompare(a[0]))
     .map(([month, data]) => ({ month, ...data }));
 
-  // Subscription stats
-  const { data: allSubs } = await supabase.from('subscriptions').select('*');
+  // Subscription stats (capped at 5,000 rows — replace with aggregate DB queries if this is hit)
+  const { data: allSubs } = await supabase.from('subscriptions').select('*').limit(5000);
   const subsList = allSubs ?? [];
 
   const activeSubs = subsList.filter(s => s.status === 'active');

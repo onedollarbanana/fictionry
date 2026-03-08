@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase-admin';
+import { checkRateLimit } from '@/lib/rate-limit';
 import { createNotification } from '@/lib/create-notification';
 import { sendEmail } from '@/lib/send-email';
 import { AuthorAnnouncementEmail } from '@/components/emails/author-announcement-email';
@@ -19,6 +20,23 @@ export async function POST(request: Request) {
 
   if (!story_id || !title?.trim() || !content?.trim()) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+  }
+
+  // Rate limit: 5 announcements per hour (each sends emails to all followers)
+  const rateLimit = await checkRateLimit(supabase, user.id, 'announcement');
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: rateLimit.message }, { status: 429 });
+  }
+
+  // Verify the authenticated user owns this story
+  const { data: story } = await supabase
+    .from('stories')
+    .select('author_id')
+    .eq('id', story_id)
+    .maybeSingle();
+
+  if (!story || story.author_id !== user.id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   const { error } = await supabase
