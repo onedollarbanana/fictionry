@@ -209,9 +209,9 @@ export default function NewStoryPage() {
                 value={tagline}
                 onChange={e => setTagline(e.target.value)}
                 placeholder="e.g., A sword, a secret, and the end of everything"
-                maxLength={80}
+                maxLength={60}
               />
-              <p className="text-xs text-muted-foreground">A punchy one-liner that sells your story — {tagline.length}/80</p>
+              <p className="text-xs text-muted-foreground">A punchy one-liner that sells your story — {tagline.length}/60</p>
             </div>
 
             <div className="space-y-2">

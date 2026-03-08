@@ -8,7 +8,7 @@ import type { StoryCardData } from '@/components/story/story-card';
 
 const STORY_SELECT = `
   id, slug, short_id, title, tagline, cover_url, primary_genre, subgenres, tags, status,
-  total_views, follower_count, chapter_count, rating_count, rating_sentiment, rating_confidence, bayesian_rating,
+  total_views, follower_count, chapter_count, word_count, rating_count, rating_sentiment, rating_confidence, bayesian_rating,
   created_at, updated_at, profiles!author_id(username, display_name)
 `;
 
