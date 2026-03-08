@@ -202,8 +202,6 @@ export default function EditStoryPage() {
       content_rating: contentRating,
       content_warnings: contentWarnings,
       format,
-      // Keep legacy genres in sync
-      genres: primaryGenre ? [primaryGenre] : [],
       updated_at: now,
     };
 

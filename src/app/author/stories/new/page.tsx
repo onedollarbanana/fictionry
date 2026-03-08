@@ -119,8 +119,6 @@ export default function NewStoryPage() {
           content_rating: contentRating,
           content_warnings: contentWarnings,
           format,
-          // Legacy field — store primary genre here for backward compat
-          genres: primaryGenre ? [primaryGenre] : [],
           status: 'ongoing',
           visibility: 'draft',
           word_count: 0,
