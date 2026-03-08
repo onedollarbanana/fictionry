@@ -194,20 +194,22 @@ export function Comment({
     const supabase = createClient();
     
     if (liked) {
-      // Unlike
-      await supabase
+      // Unlike — only update the counter if the delete succeeded
+      const { error: unlikeError } = await supabase
         .from('comment_likes')
         .delete()
         .eq('comment_id', comment.id)
         .eq('user_id', currentUserId);
-      
-      await supabase
-        .from('comments')
-        .update({ likes: Math.max(0, likesCount - 1) })
-        .eq('id', comment.id);
-      
-      setLiked(false);
-      setLikesCount(prev => Math.max(0, prev - 1));
+
+      if (!unlikeError) {
+        await supabase
+          .from('comments')
+          .update({ likes: Math.max(0, likesCount - 1) })
+          .eq('id', comment.id);
+
+        setLiked(false);
+        setLikesCount(prev => Math.max(0, prev - 1));
+      }
     } else {
       // Like
       const { error } = await supabase

@@ -88,17 +88,18 @@ export function ContinuousScrollReader({
     return allChapterIds[currentIdx + 1].id
   }, [allChapterIds])
 
-  // Fetch a single chapter by ID
+  // Fetch a single chapter by ID. Passing storyId as a query param lets the API
+  // validate the chapter belongs to this story, preventing cross-story ID probing.
   const fetchChapter = useCallback(async (chapterId: string): Promise<ChapterData | null> => {
     try {
-      const response = await fetch(`/api/chapters/${chapterId}/content`)
+      const response = await fetch(`/api/chapters/${chapterId}/content?storyId=${storyId}`)
       if (!response.ok) throw new Error('Failed to load chapter')
       return await response.json()
     } catch (err) {
       console.error('Error loading chapter:', err)
       return null
     }
-  }, [])
+  }, [storyId])
 
   // Load next chapter and keep preloading if needed
   const loadNextChapter = useCallback(async () => {
