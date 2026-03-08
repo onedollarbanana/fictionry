@@ -25,7 +25,7 @@ const TRACK_LABELS: Record<string, string> = {
   reading_streak: 'Reading Streak',
   publishing_streak: 'Publishing Streak',
   peak_rank: 'Peak Rank',
-  rising_stars: 'Breaking Out',
+  breaking_out: 'Breaking Out',
   weeks_top_50: 'Weeks in Top 50',
   veteran_reader: 'Veteran Reader',
   loyal_reader: 'Loyal Reader',
@@ -77,14 +77,14 @@ const TRACK_TO_STAT: Record<string, string> = {
   reading_streak: 'reading_longest_streak',
   publishing_streak: 'publishing_longest_streak',
   peak_rank: 'peak_rank',
-  rising_stars: 'rising_stars',
+  breaking_out: 'breaking_out',
   weeks_top_50: 'weeks_top_50',
   veteran_reader: 'account_age_days',
   loyal_reader: 'account_age_days',
 }
 
 // Tracks where lower value is "better" (rankings)
-const INVERSE_TRACKS = new Set(['peak_rank', 'rising_stars'])
+const INVERSE_TRACKS = new Set(['peak_rank', 'breaking_out'])
 
 export function getStatForTrack(trackId: string, stats: UserStatsMap | null): number | undefined {
   if (!stats) return undefined

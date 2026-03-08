@@ -159,6 +159,8 @@ export const supabaseAdmin = createClient(url, process.env.SUPABASE_SERVICE_ROLE
 
 15. **Two genre sets exist** — 17 genres for story tagging (in `GENRES` const) are NOT the same as the 13 reader-preference genres used in onboarding.
 
+16. **DB column values must be verified before use in queries.** Before writing any code that filters a DB column by a value originating from UI labels, constants, or assumptions, run `mcp__supabase__execute_sql` to check what the column actually stores. Common trap: `primary_genre` stores slugs (`'fantasy'`, `'science-fiction'`) not display names (`'Fantasy'`, `'Sci-Fi'`). Same applies to any enum-like field (status, visibility, type, format, etc.) and any field with both a display form and a stored form. One `SELECT DISTINCT column FROM table LIMIT 10` during planning prevents silent empty-result bugs that `npm run build` cannot catch.
+
 ---
 
 ## Environments

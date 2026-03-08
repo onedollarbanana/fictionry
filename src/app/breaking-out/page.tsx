@@ -51,9 +51,7 @@ export default async function BreakingOutPage({ searchParams }: PageProps) {
         profiles!author_id(username, display_name)
       )`
     )
-    // page_slug "rising-stars" is the internal DB key written by the snapshot_rankings DB function.
-    // The user-facing name is "Breaking Out". Do not change this without also updating that function.
-    .eq("page_slug", "rising-stars")
+    .eq("page_slug", "breaking-out")
     .eq("snapshot_date", today)
     .order("rank", { ascending: true })
     .limit(50);

@@ -62,23 +62,7 @@ export function ContinueReading({ items }: ContinueReadingProps) {
     });
   };
 
-  if (items.length === 0) {
-    return (
-      <section className="mb-8 bg-primary/5 rounded-xl p-6">
-        <h2 className="text-xl font-semibold flex items-center gap-2 mb-4">
-          <Play className="h-5 w-5" />
-          Continue Reading
-        </h2>
-        <div className="text-center py-8">
-          <BookOpen className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-          <p className="text-muted-foreground mb-4">No stories in progress</p>
-          <Link href="/browse">
-            <Button>Find Something to Read</Button>
-          </Link>
-        </div>
-      </section>
-    );
-  }
+  if (items.length === 0) return null;
 
   return (
     <section className="mb-8 bg-primary/5 rounded-xl p-6">
