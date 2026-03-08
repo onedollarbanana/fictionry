@@ -480,9 +480,13 @@ export default function MonetizationPage() {
                       value={tier.description || ''}
                       disabled={!isConnected}
                       placeholder={DEFAULT_DESCRIPTIONS[tierName]}
+                      maxLength={500}
                       onChange={(e) => updateTier(tierName, { description: e.target.value || null })}
                       className="w-full rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-50 disabled:cursor-not-allowed resize-none"
                     />
+                    <p className="text-xs text-zinc-400 text-right mt-1">
+                      {(tier.description || '').length}/500
+                    </p>
                   </div>
                 </CardContent>
               </Card>

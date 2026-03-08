@@ -117,9 +117,10 @@ export default function StoryOverviewPage() {
   // Bulk actions
   const bulkPublish = async () => {
     if (selectedChapters.size === 0) return;
+    if (selectedChapters.size > 5 && !confirm(`Publish ${selectedChapters.size} chapters? They will all go live immediately.`)) return;
     setBulkActionLoading(true);
     const supabase = createClient();
-    
+
     const { error } = await supabase
       .from("chapters")
       .update({ is_published: true, published_at: new Date().toISOString() })
@@ -162,7 +163,12 @@ export default function StoryOverviewPage() {
     }
     setBulkActionLoading(true);
     const supabase = createClient();
-    
+
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // Snapshot the chapters being deleted for the audit log
+    const toDelete = chapters.filter(c => selectedChapters.has(c.id));
+
     const { error } = await supabase
       .from("chapters")
       .delete()
@@ -171,6 +177,20 @@ export default function StoryOverviewPage() {
     if (error) {
       showToast("Failed to delete chapters", "error");
     } else {
+      // Write audit log entries (non-blocking)
+      if (user) {
+        void supabase.from("chapter_deletion_log").insert(
+          toDelete.map(c => ({
+            story_id: storyId,
+            chapter_id: c.id,
+            chapter_title: c.title,
+            chapter_number: c.chapter_number,
+            word_count: c.word_count,
+            was_published: c.is_published,
+            deleted_by: user.id,
+          }))
+        );
+      }
       showToast(`Deleted ${selectedChapters.size} chapter(s)`, "success");
       await loadData();
       clearSelection();
@@ -200,20 +220,16 @@ export default function StoryOverviewPage() {
     
     setChapters(updatedChapters);
 
-    // Update in database
+    // Update all chapter numbers in parallel
     const supabase = createClient();
-    const updates = updatedChapters.map(chapter => ({
-      id: chapter.id,
-      chapter_number: chapter.chapter_number
-    }));
-
-    // Update each chapter
-    for (const update of updates) {
-      await supabase
-        .from("chapters")
-        .update({ chapter_number: update.chapter_number })
-        .eq("id", update.id);
-    }
+    await Promise.all(
+      updatedChapters.map(chapter =>
+        supabase
+          .from("chapters")
+          .update({ chapter_number: chapter.chapter_number })
+          .eq("id", chapter.id)
+      )
+    );
 
     showToast("Chapter order updated", "success");
   };

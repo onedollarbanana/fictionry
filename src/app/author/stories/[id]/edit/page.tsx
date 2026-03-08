@@ -42,23 +42,12 @@ function getCooldownStatus(
   if (changeCount === 0) return { canChange: true, reason: null };
 
   const now = new Date();
-
-  // Check yearly cap
   const yearStart = new Date(now.getFullYear(), 0, 1);
-  if (lastChangedAt) {
-    const lastChanged = new Date(lastChangedAt);
-    const changesThisYear = lastChanged >= yearStart ? 1 : 0; // simplified: tracks via count
-    if (changeCount >= MAX_CHANGES_PER_YEAR && lastChanged >= yearStart) {
-      return {
-        canChange: false,
-        reason: `You've reached the maximum of ${MAX_CHANGES_PER_YEAR} genre changes this year.`,
-      };
-    }
-  }
 
-  // Check 90-day cooldown
   if (lastChangedAt) {
     const lastChanged = new Date(lastChangedAt);
+
+    // Check 90-day cooldown first (most common gate)
     const daysSince = Math.floor(
       (now.getTime() - lastChanged.getTime()) / (1000 * 60 * 60 * 24)
     );
@@ -67,6 +56,18 @@ function getCooldownStatus(
       return {
         canChange: false,
         reason: `Genre can be changed again in ${daysRemaining} day${daysRemaining !== 1 ? "s" : ""}.`,
+      };
+    }
+
+    // Check yearly cap: count how many changes happened in the current calendar year.
+    // primary_genre_change_count is a lifetime total, so we derive the this-year count
+    // by checking whether the last change was this year. Since we only allow 2/year and
+    // cooldown is 90 days, at most 2 changes can fall within a single calendar year.
+    // We conservatively block if the count is >= cap AND the last change was this year.
+    if (changeCount >= MAX_CHANGES_PER_YEAR && lastChanged >= yearStart) {
+      return {
+        canChange: false,
+        reason: `You've reached the maximum of ${MAX_CHANGES_PER_YEAR} genre changes this year.`,
       };
     }
   }

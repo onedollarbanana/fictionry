@@ -100,8 +100,16 @@ export default function WritingStatsPage() {
     setSavingGoal(false)
   }
 
+  // Returns YYYY-MM-DD in the user's local timezone (not UTC)
+  function localDateStr(date: Date): string {
+    const y = date.getFullYear()
+    const m = String(date.getMonth() + 1).padStart(2, '0')
+    const d = String(date.getDate()).padStart(2, '0')
+    return `${y}-${m}-${d}`
+  }
+
   // Compute stats
-  const today = new Date().toISOString().split('T')[0]
+  const today = localDateStr(new Date())
   const todayLog = logs.find(l => l.log_date === today)
   const wordsToday = todayLog?.words_written || 0
   const dailyGoal = goal?.daily_word_goal || parseInt(goalInput) || 0
@@ -128,13 +136,14 @@ export default function WritingStatsPage() {
     const dateSet = new Set(logEntries.filter(l => l.words_written > 0).map(l => l.log_date))
 
     // Current streak: consecutive days going back from today (or yesterday)
+    // Uses local date to avoid UTC boundary issues (e.g. 11 PM local = next day UTC)
     let currentStreak = 0
     const checkDate = new Date()
     // If no entry today, start from yesterday
-    if (!dateSet.has(checkDate.toISOString().split('T')[0])) {
+    if (!dateSet.has(localDateStr(checkDate))) {
       checkDate.setDate(checkDate.getDate() - 1)
     }
-    while (dateSet.has(checkDate.toISOString().split('T')[0])) {
+    while (dateSet.has(localDateStr(checkDate))) {
       currentStreak++
       checkDate.setDate(checkDate.getDate() - 1)
     }

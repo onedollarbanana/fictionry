@@ -19,6 +19,7 @@ interface ChapterPreviewProps {
   onImport: () => void
   importing: boolean
   storyId: string
+  publishOnImport?: boolean
 }
 
 /**
@@ -40,6 +41,7 @@ export function ChapterPreview({
   onChaptersChange,
   onImport,
   importing,
+  publishOnImport = false,
 }: ChapterPreviewProps) {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
 
@@ -173,8 +175,8 @@ export function ChapterPreview({
         size="lg"
       >
         {importing
-          ? "Importing..."
-          : `Import All ${chapters.length} Chapters as Drafts`}
+          ? `Importing ${chapters.length} chapters...`
+          : `Import All ${chapters.length} Chapters${publishOnImport ? " (Published)" : " as Drafts"}`}
       </Button>
     </div>
   )

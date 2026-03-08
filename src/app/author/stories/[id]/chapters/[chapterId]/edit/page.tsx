@@ -36,10 +36,11 @@ function getBrowserTimezone(): string {
   }
 }
 
-// Get minimum schedule time (5 minutes from now) as datetime-local value
+// Get minimum schedule time (5 minutes from now) as datetime-local value in local time
 function getMinScheduleTime(): string {
   const min = new Date(Date.now() + 5 * 60 * 1000);
-  return min.toISOString().slice(0, 16);
+  const local = new Date(min.getTime() - min.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
 }
 
 interface Chapter {
@@ -223,26 +224,8 @@ export default function EditChapterPage() {
       return;
     }
 
-    // Update story stats
-    const { data: allChapters } = await supabase
-      .from("chapters")
-      .select("word_count")
-      .eq("story_id", storyId)
-      .eq("is_published", true);
-
-    const totalWords = (allChapters || []).reduce((sum, ch) => sum + (ch.word_count || 0), 0);
-    const publishedCount = (allChapters || []).length;
-
-    await supabase
-      .from("stories")
-      .update({
-        chapter_count: publishedCount,
-        total_word_count: totalWords,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", storyId);
-
     // Trigger follower notifications on first publish (non-blocking)
+    // Note: story chapter_count and word_count are maintained by the on_chapter_change DB trigger.
     if (!wasPublished && publish && chapter) {
       void fetch("/api/push/send", {
         method: "POST",
@@ -458,7 +441,12 @@ export default function EditChapterPage() {
             <Button
               type="button"
               disabled={saving || !title.trim()}
-              onClick={(e) => handleSubmit(e, true)}
+              onClick={(e) => {
+                if (chapter?.scheduled_for && !window.confirm(
+                  "This will publish the chapter immediately and cancel the scheduled date. Continue?"
+                )) return;
+                handleSubmit(e, true);
+              }}
             >
               {saving ? "Publishing..." : "Publish"}
             </Button>
