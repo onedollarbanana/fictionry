@@ -27,6 +27,7 @@ export default function ImportChaptersPage() {
   const [parsing, setParsing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pasteText, setPasteText] = useState("")
+  const [publishOnImport, setPublishOnImport] = useState(false)
 
   useEffect(() => {
     async function loadStory() {
@@ -41,9 +42,21 @@ export default function ImportChaptersPage() {
     if (storyId) loadStory()
   }, [storyId])
 
+  const MAX_FILE_SIZE_MB = 50
+  const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
+
   const handleFileUpload = useCallback(
     async (file: File, type: "epub" | "docx") => {
       setError(null)
+
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        const sizeMb = (file.size / (1024 * 1024)).toFixed(1)
+        const msg = `File is too large (${sizeMb} MB). Maximum allowed size is ${MAX_FILE_SIZE_MB} MB.`
+        setError(msg)
+        showToast(msg, "error")
+        return
+      }
+
       setParsing(true)
       setChapters([])
       try {
@@ -53,6 +66,19 @@ export default function ImportChaptersPage() {
         } else {
           parsed = await parseDocx(file)
         }
+
+        // Warn if DOCX parsed as a single large chapter (likely missing headings)
+        if (type === "docx" && parsed.length === 1) {
+          const json = (await import("@/lib/html-to-tiptap")).htmlToTiptapJSON(parsed[0].html)
+          const wc = countWordsFromJSON(json)
+          if (wc > 10000) {
+            setError(
+              `Only 1 chapter was detected in this document (${wc.toLocaleString()} words). ` +
+              `If your document has multiple chapters, add Heading 1 or Heading 2 styles to chapter titles, or separate them with ---CHAPTER--- markers.`
+            )
+          }
+        }
+
         setChapters(parsed)
         showToast(`Found ${parsed.length} chapter${parsed.length !== 1 ? "s" : ""}`, "success")
       } catch (err) {
@@ -102,51 +128,33 @@ export default function ImportChaptersPage() {
           ? existingChapters[0].chapter_number + 1
           : 1
 
+      const now = new Date().toISOString()
+
       // Prepare all chapters for insert
       const inserts = chapters.map((ch) => {
         const json = htmlToTiptapJSON(ch.html)
         const wordCount = countWordsFromJSON(json)
-        const row = {
+        return {
           story_id: storyId,
           title: ch.title,
           content: json,
           word_count: wordCount,
           chapter_number: nextNumber++,
-          is_published: false,
-          published_at: null,
+          is_published: publishOnImport,
+          published_at: publishOnImport ? now : null,
         }
-        return row
       })
 
-      // Batch insert
+      // Batch insert (story stats updated automatically by on_chapter_change trigger)
       const { error: insertError } = await supabase
         .from("chapters")
         .insert(inserts)
 
       if (insertError) throw new Error(insertError.message)
 
-      // Update story totals
-      const { data: allChapters } = await supabase
-        .from("chapters")
-        .select("word_count, is_published")
-        .eq("story_id", storyId)
-
-      const totalChapters = (allChapters || []).filter((c) => c.is_published).length
-      const totalWords = (allChapters || [])
-        .filter((c) => c.is_published)
-        .reduce((sum, c) => sum + (c.word_count || 0), 0)
-
-      await supabase
-        .from("stories")
-        .update({
-          chapter_count: totalChapters,
-          total_word_count: totalWords,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", storyId)
-
+      const statusLabel = publishOnImport ? "published" : "drafts"
       showToast(
-        `Successfully imported ${chapters.length} chapters as drafts!`,
+        `Successfully imported ${chapters.length} chapters as ${statusLabel}!`,
         "success"
       )
       router.push(`/author/stories/${storyId}`)
@@ -290,13 +298,30 @@ export default function ImportChaptersPage() {
       </Tabs>
 
       {chapters.length > 0 && (
-        <ChapterPreview
-          chapters={chapters}
-          onChaptersChange={setChapters}
-          onImport={handleImport}
-          importing={importing}
-          storyId={storyId}
-        />
+        <div className="space-y-4">
+          <label className="flex items-center gap-3 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={publishOnImport}
+              onChange={(e) => setPublishOnImport(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300"
+            />
+            <div>
+              <span className="text-sm font-medium">Publish immediately on import</span>
+              <p className="text-xs text-muted-foreground">
+                Uncheck to import as drafts (you can publish individually later)
+              </p>
+            </div>
+          </label>
+          <ChapterPreview
+            chapters={chapters}
+            onChaptersChange={setChapters}
+            onImport={handleImport}
+            importing={importing}
+            storyId={storyId}
+            publishOnImport={publishOnImport}
+          />
+        </div>
       )}
     </div>
   )

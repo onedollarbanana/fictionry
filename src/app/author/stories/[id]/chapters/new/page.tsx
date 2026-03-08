@@ -34,10 +34,11 @@ function getBrowserTimezone(): string {
   }
 }
 
-// Get minimum schedule time (5 minutes from now) as datetime-local value
+// Get minimum schedule time (5 minutes from now) as datetime-local value in local time
 function getMinScheduleTime(): string {
   const min = new Date(Date.now() + 5 * 60 * 1000);
-  return min.toISOString().slice(0, 16);
+  const local = new Date(min.getTime() - min.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
 }
 
 export default function NewChapterPage() {
@@ -53,6 +54,7 @@ export default function NewChapterPage() {
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved">("saved");
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [draftRecovered, setDraftRecovered] = useState(false);
+  const [draftAge, setDraftAge] = useState<string | null>(null);
   const [scheduledFor, setScheduledFor] = useState<string>("");
   const [browserTimezone] = useState(getBrowserTimezone);
   const router = useRouter();
@@ -101,7 +103,20 @@ export default function NewChapterPage() {
             if (draft.authorNoteBefore) setAuthorNoteBefore(draft.authorNoteBefore);
             if (draft.authorNoteAfter) setAuthorNoteAfter(draft.authorNoteAfter);
             if (draft.scheduledFor) setScheduledFor(draft.scheduledFor);
-            if (draft.savedAt) setLastSaved(new Date(draft.savedAt));
+            if (draft.savedAt) {
+              const savedDate = new Date(draft.savedAt);
+              setLastSaved(savedDate);
+              const ageMs = Date.now() - savedDate.getTime();
+              const ageHours = Math.floor(ageMs / (1000 * 60 * 60));
+              if (ageHours >= 24) {
+                const ageDays = Math.floor(ageHours / 24);
+                setDraftAge(`${ageDays} day${ageDays !== 1 ? "s" : ""} ago`);
+              } else if (ageHours >= 1) {
+                setDraftAge(`${ageHours} hour${ageHours !== 1 ? "s" : ""} ago`);
+              } else {
+                setDraftAge(null);
+              }
+            }
             setSaveStatus("saved");
             setDraftRecovered(true);
           } catch (e) {
@@ -196,24 +211,7 @@ export default function NewChapterPage() {
       return;
     }
 
-    // Update story chapter count and word count
-    const { data: allChapters } = await supabase
-      .from("chapters")
-      .select("word_count")
-      .eq("story_id", storyId)
-      .eq("is_published", true);
-
-    const totalWords = (allChapters || []).reduce((sum, ch) => sum + (ch.word_count || 0), 0);
-    const publishedCount = (allChapters || []).length;
-
-    await supabase
-      .from("stories")
-      .update({
-        chapter_count: publishedCount,
-        total_word_count: totalWords,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", storyId);
+    // Note: story chapter_count and word_count are maintained by the on_chapter_change DB trigger.
 
     // Log writing activity
     if (wordCount > 0) {
@@ -264,7 +262,7 @@ export default function NewChapterPage() {
 
       {draftRecovered && (
         <div className="flex items-center justify-between p-3 text-sm bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded mb-4">
-          <span>📝 Unsaved draft recovered</span>
+          <span>📝 Draft recovered{draftAge ? ` (saved ${draftAge})` : ""}</span>
           <button
             type="button"
             onClick={() => {

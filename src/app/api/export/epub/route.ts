@@ -191,7 +191,10 @@ p:first-child, h1 + p, h2 + p { text-indent: 0; }
   let hasCover = false
   if (input.coverUrl) {
     try {
-      const coverResponse = await fetch(input.coverUrl)
+      const coverController = new AbortController()
+      const coverTimeout = setTimeout(() => coverController.abort(), 8000)
+      const coverResponse = await fetch(input.coverUrl, { signal: coverController.signal })
+      clearTimeout(coverTimeout)
       if (coverResponse.ok) {
         const coverBuffer = Buffer.from(await coverResponse.arrayBuffer())
         const contentType = coverResponse.headers.get('content-type') || 'image/jpeg'
@@ -323,6 +326,8 @@ p:first-child, h1 + p, h2 + p { text-indent: 0; }
 
 function escapeXml(str: string): string {
   return str
+    // Strip XML-illegal control characters
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
