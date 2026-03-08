@@ -3,11 +3,35 @@
   "short_name": "Fictionry",
   "description": "The Modern Way to Read and Write Fiction",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",
   "theme_color": "#7c3aed",
   "orientation": "portrait-primary",
   "categories": ["books", "entertainment", "news"],
+  "shortcuts": [
+    {
+      "name": "Browse Stories",
+      "short_name": "Browse",
+      "description": "Discover new fiction",
+      "url": "/browse",
+      "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "My Library",
+      "short_name": "Library",
+      "description": "Your saved stories",
+      "url": "/library",
+      "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Write a Story",
+      "short_name": "Write",
+      "description": "Go to author dashboard",
+      "url": "/author/dashboard",
+      "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
+    }
+  ],
   "icons": [
     {
       "src": "/icons/icon-72x72.png",

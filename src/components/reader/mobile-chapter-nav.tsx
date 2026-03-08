@@ -67,7 +67,7 @@ export function MobileChapterNav({
                 <Button
                   variant="outline"
                   size="sm"
-                  className={`flex items-center gap-1 h-9 px-3 text-xs font-medium ${
+                  className={`flex items-center gap-1 min-h-[44px] px-3 text-xs font-medium ${
                     isAutoTheme
                       ? 'border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300'
                       : ''
@@ -79,7 +79,7 @@ export function MobileChapterNav({
                 </Button>
               </Link>
             ) : (
-              <Button variant="outline" size="sm" disabled className="opacity-30 h-9 px-3 text-xs">
+              <Button variant="outline" size="sm" disabled className="opacity-30 min-h-[44px] px-3 text-xs">
                 <ChevronLeft className="h-3.5 w-3.5" />
                 Prev
               </Button>
@@ -107,7 +107,7 @@ export function MobileChapterNav({
                 <Button 
                   variant="ghost" 
                   size="sm"
-                  className={`h-9 w-9 p-0 ${isAutoTheme 
+                  className={`min-h-[44px] min-w-[44px] p-0 ${isAutoTheme
                     ? 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800' 
                     : ''
                   }`}
@@ -138,7 +138,7 @@ export function MobileChapterNav({
                 <Button
                   variant="outline"
                   size="sm"
-                  className={`flex items-center gap-1 h-9 px-3 text-xs font-medium ${
+                  className={`flex items-center gap-1 min-h-[44px] px-3 text-xs font-medium ${
                     isAutoTheme
                       ? 'border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300'
                       : ''
@@ -150,7 +150,7 @@ export function MobileChapterNav({
                 </Button>
               </Link>
             ) : (
-              <Button variant="outline" size="sm" disabled className="opacity-30 h-9 px-3 text-xs">
+              <Button variant="outline" size="sm" disabled className="opacity-30 min-h-[44px] px-3 text-xs">
                 Next
                 <ChevronRight className="h-3.5 w-3.5" />
               </Button>

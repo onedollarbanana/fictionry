@@ -146,6 +146,7 @@ export function CommentInput({
         className="w-full p-3 border border-border rounded-lg resize-none bg-background text-foreground"
         rows={3}
         maxLength={MAX_CHARS}
+        autoComplete="off"
       />
       
       {/* @mention dropdown */}

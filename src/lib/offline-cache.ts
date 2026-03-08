@@ -65,8 +65,22 @@ function makeKey(storyId: string, chapterId: string): string {
   return `${storyId}/${chapterId}`;
 }
 
+async function hasEnoughStorageQuota(minFreeBytes = 50 * 1024 * 1024): Promise<boolean> {
+  try {
+    if (typeof navigator === 'undefined' || !navigator.storage?.estimate) return true
+    const { quota = 0, usage = 0 } = await navigator.storage.estimate()
+    return (quota - usage) >= minFreeBytes
+  } catch {
+    return true // allow caching if API unavailable
+  }
+}
+
 export async function cacheChapter(data: CachedChapter): Promise<void> {
   try {
+    if (!(await hasEnoughStorageQuota())) {
+      console.warn('Offline cache skipped: less than 50 MB of storage remaining.')
+      return
+    }
     const db = await openDB();
     const tx = db.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);

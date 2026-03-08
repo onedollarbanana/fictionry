@@ -86,7 +86,14 @@ export function ScrollProgressBar() {
   if (!isVisible) return null
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-muted/30">
+    <div
+      className="fixed top-0 left-0 right-0 z-50 h-1 bg-muted/30"
+      role="progressbar"
+      aria-valuenow={Math.round(progress)}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-label={chapterLabel ? `${chapterLabel}: ${Math.round(progress)}%` : `Reading progress: ${Math.round(progress)}%`}
+    >
       <div
         className="h-full bg-primary transition-all duration-150 ease-out"
         style={{ width: `${progress}%` }}
