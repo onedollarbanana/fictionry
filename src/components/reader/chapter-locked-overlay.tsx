@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Lock, Crown, Sparkles, Star, LogIn, BookCheck } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -53,6 +53,23 @@ export function ChapterLockedOverlay({
   const [loadingTier, setLoadingTier] = useState<string | null>(null)
   const [isRead, setIsRead] = useState(false)
   const [toggling, setToggling] = useState(false)
+
+  // Initialize isRead from DB — the overlay is only shown to users without access,
+  // but logged-in users may have previously marked the chapter as read anyway.
+  useEffect(() => {
+    if (!isLoggedIn) return
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      supabase
+        .from('chapter_reads')
+        .select('chapter_id')
+        .eq('user_id', user.id)
+        .eq('chapter_id', chapterId)
+        .maybeSingle()
+        .then(({ data }) => { if (data) setIsRead(true) })
+    })
+  }, [isLoggedIn, chapterId])
 
   const handleToggleRead = async () => {
     setToggling(true)

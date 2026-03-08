@@ -1,6 +1,7 @@
 'use client'
 
 import { useScrollPosition } from '@/lib/hooks/useScrollPosition'
+import { useReadingSettings } from '@/lib/hooks/useReadingSettings'
 import { ResumeToast } from './resume-toast'
 
 interface ScrollPositionTrackerProps {
@@ -11,12 +12,14 @@ interface ScrollPositionTrackerProps {
 }
 
 export function ScrollPositionTracker({ storyId, chapterId, chapterNumber, userId }: ScrollPositionTrackerProps) {
-  const { showResumeToast } = useScrollPosition({
+  const { settings, isLoaded } = useReadingSettings()
+  const { showResumeToast, dismissResumeToast } = useScrollPosition({
     storyId,
     chapterId,
     chapterNumber,
     enabled: !!userId,
+    readingMode: isLoaded ? settings.readingMode : 'paged',
   })
 
-  return <ResumeToast show={showResumeToast} />
+  return <ResumeToast show={showResumeToast} onDismiss={dismissResumeToast} />
 }

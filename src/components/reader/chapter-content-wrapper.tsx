@@ -98,13 +98,18 @@ export function ChapterContentWrapper({ children, headerContent, storyTitle, sto
   const explicitTheme = !isAutoTheme ? themeInlineStyles[settings.theme as keyof typeof themeInlineStyles] : null
 
   return (
-    <div 
+    <div
       className={`min-h-screen transition-colors duration-300 ${
-        isAutoTheme 
-          ? 'bg-white dark:bg-background text-zinc-900 dark:text-zinc-100' 
+        isAutoTheme
+          ? 'bg-white dark:bg-background text-zinc-900 dark:text-zinc-100'
           : ''
       }`}
-      style={explicitTheme ? { backgroundColor: explicitTheme.bg, color: explicitTheme.text } : undefined}
+      style={{
+        ...(explicitTheme ? { backgroundColor: explicitTheme.bg, color: explicitTheme.text } : {}),
+        // Apply brightness to the whole reading surface (content + header chrome),
+        // not just the article, so the experience is uniform.
+        ...(settings.brightness !== 100 ? { filter: `brightness(${settings.brightness / 100})` } : {}),
+      }}
       data-reading-theme={settings.theme}
     >
       {/* Scroll Progress Bar */}
@@ -142,10 +147,7 @@ export function ChapterContentWrapper({ children, headerContent, storyTitle, sto
       {/* Chapter Content with Applied Settings */}
       <article 
         className={`container mx-auto px-5 md:px-4 py-8 pb-24 md:pb-8 ${widthClass} ${fontClass} ${lineHeightClass}`}
-        style={{ 
-          fontSize: `${settings.fontSize}px`,
-          filter: settings.brightness !== 100 ? `brightness(${settings.brightness / 100})` : undefined,
-        }}
+        style={{ fontSize: `${settings.fontSize}px` }}
         onClick={handleContentTap}
         data-reading-settings
       >

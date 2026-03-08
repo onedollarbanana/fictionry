@@ -30,6 +30,7 @@ export interface CachedChapterSummary {
 const DB_NAME = 'fictionry-offline';
 const DB_VERSION = 1;
 const STORE_NAME = 'chapters';
+const MAX_CACHE_ENTRIES = 50;
 
 function isIndexedDBAvailable(): boolean {
   try {
@@ -71,20 +72,67 @@ export async function cacheChapter(data: CachedChapter): Promise<void> {
     const store = tx.objectStore(STORE_NAME);
     const key = makeKey(data.storyId, data.chapterId);
 
-    return new Promise((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
       const request = store.put(data, key);
-      request.onsuccess = () => {
-        db.close();
-        resolve();
-      };
-      request.onerror = () => {
-        db.close();
-        reject(request.error);
-      };
+      request.onsuccess = () => { db.close(); resolve(); };
+      request.onerror = () => { db.close(); reject(request.error); };
     });
+
+    // Enforce max entry cap after each write — fire-and-forget
+    evictOldestIfOverCap().catch(e => console.warn('Cache eviction failed:', e));
   } catch (error) {
     console.warn('Failed to cache chapter:', error);
   }
+}
+
+/**
+ * Removes the oldest cached chapters when the store exceeds MAX_CACHE_ENTRIES.
+ * Eviction is by cachedAt ascending (oldest removed first).
+ */
+async function evictOldestIfOverCap(): Promise<void> {
+  // Step 1: check count
+  const db1 = await openDB();
+  const count = await new Promise<number>((resolve, reject) => {
+    const req = db1.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).count();
+    req.onsuccess = () => { db1.close(); resolve(req.result); };
+    req.onerror = () => { db1.close(); reject(req.error); };
+  });
+  if (count <= MAX_CACHE_ENTRIES) return;
+
+  // Step 2: collect all keys and cachedAt values via cursor
+  const db2 = await openDB();
+  const entries = await new Promise<Array<{ key: IDBValidKey; cachedAt: string }>>((resolve, reject) => {
+    const results: Array<{ key: IDBValidKey; cachedAt: string }> = [];
+    const req = db2.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).openCursor();
+    req.onsuccess = () => {
+      const cursor = req.result;
+      if (cursor) {
+        results.push({ key: cursor.key, cachedAt: (cursor.value as CachedChapter).cachedAt });
+        cursor.continue();
+      } else {
+        db2.close();
+        resolve(results);
+      }
+    };
+    req.onerror = () => { db2.close(); reject(req.error); };
+  });
+
+  // Sort oldest first; determine how many to remove
+  entries.sort((a, b) => new Date(a.cachedAt).getTime() - new Date(b.cachedAt).getTime());
+  const toDelete = entries.slice(0, entries.length - MAX_CACHE_ENTRIES);
+  if (toDelete.length === 0) return;
+
+  // Step 3: delete excess entries
+  const db3 = await openDB();
+  await new Promise<void>((resolve, reject) => {
+    const store = db3.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME);
+    let pending = toDelete.length;
+    for (const { key } of toDelete) {
+      const req = store.delete(key);
+      req.onsuccess = () => { if (--pending === 0) { db3.close(); resolve(); } };
+      req.onerror = () => { db3.close(); reject(req.error); };
+    }
+  });
 }
 
 export async function getCachedChapter(storyId: string, chapterId: string): Promise<CachedChapter | null> {
