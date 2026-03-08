@@ -8,9 +8,10 @@ interface UseScrollPositionProps {
   chapterId: string
   chapterNumber: number
   enabled?: boolean // Only track for authenticated users
+  readingMode?: 'paged' | 'continuous'
 }
 
-export function useScrollPosition({ storyId, chapterId, chapterNumber, enabled = false }: UseScrollPositionProps) {
+export function useScrollPosition({ storyId, chapterId, chapterNumber, enabled = false, readingMode = 'paged' }: UseScrollPositionProps) {
   const [isRestored, setIsRestored] = useState(false)
   const [showResumeToast, setShowResumeToast] = useState(false)
   const lastSavedPosition = useRef(0)
@@ -58,19 +59,26 @@ export function useScrollPosition({ storyId, chapterId, chapterNumber, enabled =
 
       // Only restore scroll if this is the same chapter the user was reading
       if (data?.scroll_position && data.scroll_position > 0.05 && data.chapter_id === chapterId) {
-        // Wait for content to render
-        requestAnimationFrame(() => {
+        // Poll until TiptapRenderer has finished rendering the chapter content —
+        // the div exists immediately but scrollHeight is only the skeleton height
+        // until Tiptap initialises. Retry up to 10 times (1 second max).
+        const attemptScroll = (attempt = 0) => {
           const contentEl = document.getElementById('chapter-content')
           if (!contentEl) { setIsRestored(true); return }
+          // Require content to be taller than the viewport before scrolling
+          if (contentEl.scrollHeight <= window.innerHeight && attempt < 10) {
+            setTimeout(() => attemptScroll(attempt + 1), 100)
+            return
+          }
           const rect = contentEl.getBoundingClientRect()
           const contentTop = rect.top + window.scrollY
           const contentHeight = contentEl.scrollHeight
           const targetScroll = contentTop + (data.scroll_position * contentHeight)
           window.scrollTo({ top: targetScroll, behavior: 'smooth' })
           setShowResumeToast(true)
-          // Auto-hide toast after 3 seconds
           setTimeout(() => setShowResumeToast(false), 3000)
-        })
+        }
+        requestAnimationFrame(() => attemptScroll())
       }
       setIsRestored(true)
     }
@@ -80,9 +88,12 @@ export function useScrollPosition({ storyId, chapterId, chapterNumber, enabled =
     return () => clearTimeout(timer)
   }, [enabled, storyId, chapterId])
 
-  // Mark chapter as read when scroll reaches 90%
+  const dismissResumeToast = useCallback(() => setShowResumeToast(false), [])
+
+  // Mark chapter as read when scroll reaches 90%.
+  // In continuous mode, ContinuousScrollReader handles this via sentinels — skip here.
   const markChapterAsRead = useCallback(async () => {
-    if (markedAsRead.current) return
+    if (markedAsRead.current || readingMode === 'continuous') return
     markedAsRead.current = true
 
     const supabase = createClient()
@@ -176,5 +187,5 @@ export function useScrollPosition({ storyId, chapterId, chapterNumber, enabled =
     }
   }, [enabled, isRestored, savePosition, markChapterAsRead])
 
-  return { isRestored, showResumeToast }
+  return { isRestored, showResumeToast, dismissResumeToast }
 }

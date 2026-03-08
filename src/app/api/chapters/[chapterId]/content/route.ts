@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { countWordsFromTiptap } from '@/components/reader/reading-time-estimate'
 
 const TIER_HIERARCHY: Record<string, number> = {
   supporter: 1,
@@ -17,8 +18,13 @@ export async function GET(
   const supabase = await createClient()
   const { chapterId } = params
 
-  // Fetch chapter with story info
-  const { data: chapter, error } = await supabase
+  // Optional storyId query param — when provided (e.g. from the continuous scroll reader)
+  // the chapter is validated to belong to that story, preventing cross-story ID probing.
+  const { searchParams } = new URL(request.url)
+  const storyIdParam = searchParams.get('storyId')
+
+  // Build query — conditionally filter by story_id when the caller supplies it
+  let query = supabase
     .from('chapters')
     .select(`
       id,
@@ -44,7 +50,12 @@ export async function GET(
       )
     `)
     .eq('id', chapterId)
-    .single()
+
+  if (storyIdParam) {
+    query = query.eq('story_id', storyIdParam)
+  }
+
+  const { data: chapter, error } = await query.single()
 
   if (error || !chapter) {
     return NextResponse.json({ error: 'Chapter not found' }, { status: 404 })
@@ -89,13 +100,9 @@ export async function GET(
     .eq('chapter_id', chapterId)
     .is('parent_id', null)
 
-  // Calculate word count
-  let wordCount = 0
-  if (chapter.content) {
-    const content = typeof chapter.content === 'string' ? chapter.content : JSON.stringify(chapter.content)
-    const textContent = content.replace(/"type":"[^"]+"/g, '').replace(/"[^"]+"/g, ' ').replace(/[{}[\],:\d]/g, ' ')
-    wordCount = textContent.split(/\s+/).filter((w: string) => w.length > 0).length
-  }
+  // Use the same recursive Tiptap text-extraction as the chapter page so that
+  // word counts are consistent between the chapter header and the separator "Up Next" block.
+  const wordCount = countWordsFromTiptap(chapter.content)
 
   return NextResponse.json({
     id: chapter.id,

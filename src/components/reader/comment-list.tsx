@@ -57,7 +57,13 @@ export function CommentList({ chapterId, currentUserId, storyAuthorId }: Comment
   const [comments, setComments] = useState<CommentData[]>([]);
   const [pinnedComment, setPinnedComment] = useState<CommentData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [sortBy, setSortBy] = useState<SortOption>("newest");
+  const [sortBy, setSortBy] = useState<SortOption>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('comment-sort-pref')
+      if (saved === 'newest' || saved === 'oldest' || saved === 'popular') return saved
+    }
+    return 'newest'
+  });
   const [commenters, setCommenters] = useState<{ username: string }[]>([]);
 
   const fetchComments = useCallback(async () => {
@@ -151,7 +157,10 @@ export function CommentList({ chapterId, currentUserId, storyAuthorId }: Comment
     fetchComments();
   };
 
-  const totalCount = comments.length + (pinnedComment ? 1 : 0);
+  // Count all comments including replies so the heading matches the full discussion thread
+  const totalCount =
+    (pinnedComment ? 1 + (pinnedComment.replies?.length ?? 0) : 0) +
+    comments.reduce((sum, c) => sum + 1 + (c.replies?.length ?? 0), 0);
 
   return (
     <div className="mt-8 pt-8 border-t">
@@ -165,8 +174,12 @@ export function CommentList({ chapterId, currentUserId, storyAuthorId }: Comment
           <span className="text-sm text-muted-foreground">Sort by:</span>
           <select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as SortOption)}
-            className="text-sm border rounded px-2 py-1 bg-white dark:bg-zinc-900"
+            onChange={(e) => {
+              const val = e.target.value as SortOption
+              setSortBy(val)
+              localStorage.setItem('comment-sort-pref', val)
+            }}
+            className="text-sm border border-border rounded px-2 py-1 bg-background text-foreground"
           >
             <option value="newest">Newest</option>
             <option value="oldest">Oldest</option>

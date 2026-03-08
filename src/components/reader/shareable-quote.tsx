@@ -43,7 +43,7 @@ export function ShareableQuote({ storyTitle, storyUrl }: ShareableQuoteProps) {
     }
   }, []);
 
-  const handleClickOutside = useCallback((e: MouseEvent) => {
+  const handleClickOutside = useCallback((e: MouseEvent | TouchEvent) => {
     if (popupRef.current && !popupRef.current.contains(e.target as Node)) {
       setIsVisible(false);
     }
@@ -51,11 +51,15 @@ export function ShareableQuote({ storyTitle, storyUrl }: ShareableQuoteProps) {
 
   useEffect(() => {
     document.addEventListener('mouseup', handleSelection);
+    document.addEventListener('touchend', handleSelection);
     document.addEventListener('mousedown', handleClickOutside);
-    
+    document.addEventListener('touchstart', handleClickOutside);
+
     return () => {
       document.removeEventListener('mouseup', handleSelection);
+      document.removeEventListener('touchend', handleSelection);
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
     };
   }, [handleSelection, handleClickOutside]);
 
@@ -109,7 +113,7 @@ export function ShareableQuote({ storyTitle, storyUrl }: ShareableQuoteProps) {
       className="fixed z-50 flex items-center gap-1 px-2 py-1.5 bg-zinc-800 dark:bg-zinc-200 rounded-lg shadow-lg transform -translate-x-1/2 -translate-y-full"
       style={{
         left: adjustedX,
-        top: position.y + window.scrollY,
+        top: position.y,
       }}
     >
       {/* Arrow */}

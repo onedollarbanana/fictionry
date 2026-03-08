@@ -10,10 +10,10 @@ interface PagedModeOnlyProps {
 export function PagedModeOnly({ children }: PagedModeOnlyProps) {
   const { settings, isLoaded } = useReadingSettings()
   
-  // Show children while loading (default is paged) and when mode is paged
-  if (!isLoaded || settings.readingMode === 'paged') {
-    return <>{children}</>
-  }
-  
-  return null
+  // Suppress until settings are loaded from localStorage — avoids a one-frame flash
+  // of paged-only UI (keyboard nav, swipe nav) for users in continuous scroll mode.
+  // ChapterContentWrapper already shows a skeleton during !isLoaded, so hiding here is safe.
+  if (!isLoaded || settings.readingMode !== 'paged') return null
+
+  return <>{children}</>
 }

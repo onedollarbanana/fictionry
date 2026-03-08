@@ -35,7 +35,11 @@ export function MobileChapterNav({
 }: MobileChapterNavProps) {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const { settings, updateSettings, resetSettings } = useReadingSettings()
-  
+
+  // In continuous scroll mode, chapter navigation is handled by scrolling —
+  // Prev/Next links would navigate away from the continuous reader and break the experience.
+  const isContinuousMode = settings.readingMode === 'continuous'
+
   const isAutoTheme = settings.theme === 'auto'
   const explicitTheme = !isAutoTheme ? themeInlineStyles[settings.theme as keyof typeof themeInlineStyles] : null
   const widthClass = widthClasses[settings.width]
@@ -58,14 +62,14 @@ export function MobileChapterNav({
         <div className={`container mx-auto px-2 ${widthClass}`}>
           <div className="flex items-center justify-between py-1.5">
             {/* Previous Chapter */}
-            {prevChapter ? (
+            {prevChapter && !isContinuousMode ? (
               <Link href={prevChapter.url}>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   className={`flex items-center gap-1 h-9 px-3 text-xs font-medium ${
-                    isAutoTheme 
-                      ? 'border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300' 
+                    isAutoTheme
+                      ? 'border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300'
                       : ''
                   }`}
                   style={explicitTheme ? { color: explicitTheme.text, borderColor: explicitTheme.borderColor } : undefined}
@@ -129,14 +133,14 @@ export function MobileChapterNav({
             </Sheet>
 
             {/* Next Chapter */}
-            {nextChapter ? (
+            {nextChapter && !isContinuousMode ? (
               <Link href={nextChapter.url}>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   className={`flex items-center gap-1 h-9 px-3 text-xs font-medium ${
-                    isAutoTheme 
-                      ? 'border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300' 
+                    isAutoTheme
+                      ? 'border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300'
                       : ''
                   }`}
                   style={explicitTheme ? { color: explicitTheme.text, borderColor: explicitTheme.borderColor } : undefined}

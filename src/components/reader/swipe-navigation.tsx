@@ -8,14 +8,31 @@ interface SwipeNavigationProps {
   nextChapterUrl?: string
 }
 
-export function SwipeNavigation({ 
-  prevChapterUrl, 
-  nextChapterUrl 
+/**
+ * Returns true if the element (or any of its ancestors) is horizontally
+ * scrollable. Used to avoid triggering chapter navigation when the user
+ * is scrolling a wide table, code block, or stats box.
+ */
+function isInsideHorizontalScroller(el: Element | null): boolean {
+  while (el && el !== document.body) {
+    if (el.scrollWidth > el.clientWidth + 5) {
+      const { overflowX } = window.getComputedStyle(el)
+      if (overflowX === 'auto' || overflowX === 'scroll') return true
+    }
+    el = el.parentElement
+  }
+  return false
+}
+
+export function SwipeNavigation({
+  prevChapterUrl,
+  nextChapterUrl
 }: SwipeNavigationProps) {
   const router = useRouter()
   const touchStartX = useRef<number | null>(null)
   const touchStartY = useRef<number | null>(null)
   const touchStartTime = useRef<number | null>(null)
+  const insideScroller = useRef(false)
 
   const handleNavigation = useCallback((direction: 'prev' | 'next') => {
     if (direction === 'prev' && prevChapterUrl) {
@@ -27,23 +44,33 @@ export function SwipeNavigation({
 
   useEffect(() => {
     const handleTouchStart = (e: TouchEvent) => {
+      // If the touch originates inside a horizontally-scrollable element
+      // (table, code block, stat box, etc.) don't track this swipe gesture —
+      // the user is scrolling that element, not navigating chapters.
+      insideScroller.current = isInsideHorizontalScroller(e.target as Element)
+      if (insideScroller.current) return
+
       touchStartX.current = e.touches[0].clientX
       touchStartY.current = e.touches[0].clientY
       touchStartTime.current = Date.now()
     }
 
     const handleTouchEnd = (e: TouchEvent) => {
-      if (touchStartX.current === null || touchStartY.current === null || touchStartTime.current === null) {
+      if (
+        insideScroller.current ||
+        touchStartX.current === null ||
+        touchStartY.current === null ||
+        touchStartTime.current === null
+      ) {
         return
       }
 
       const touchEndX = e.changedTouches[0].clientX
       const touchEndY = e.changedTouches[0].clientY
-      const touchEndTime = Date.now()
+      const deltaTime = Date.now() - touchStartTime.current
 
       const deltaX = touchEndX - touchStartX.current
       const deltaY = touchEndY - touchStartY.current
-      const deltaTime = touchEndTime - touchStartTime.current
 
       // Reset touch state
       touchStartX.current = null
@@ -52,22 +79,21 @@ export function SwipeNavigation({
 
       // Minimum swipe distance (px)
       const minSwipeDistance = 100
-      // Maximum vertical movement (to distinguish from scrolling)
-      const maxVerticalMove = 100
       // Maximum swipe time (ms)
       const maxSwipeTime = 500
 
-      // Check if it's a valid horizontal swipe
+      // Require a clearly horizontal gesture: deltaX must exceed the minimum
+      // distance AND be at least 2× larger than the vertical movement.
+      // This prevents accidental navigation when the user scrolls diagonally
+      // through a wide element.
       if (
         Math.abs(deltaX) > minSwipeDistance &&
-        Math.abs(deltaY) < maxVerticalMove &&
+        Math.abs(deltaX) > Math.abs(deltaY) * 2 &&
         deltaTime < maxSwipeTime
       ) {
         if (deltaX > 0) {
-          // Swipe right -> previous chapter
           handleNavigation('prev')
         } else {
-          // Swipe left -> next chapter
           handleNavigation('next')
         }
       }
@@ -85,6 +111,5 @@ export function SwipeNavigation({
     }
   }, [handleNavigation])
 
-  // This component doesn't render anything visible
   return null
 }

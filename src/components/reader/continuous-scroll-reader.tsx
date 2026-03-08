@@ -55,6 +55,10 @@ export function ContinuousScrollReader({
   authorTiers,
 }: ContinuousScrollReaderProps) {
   const [chapters, setChapters] = useState<ChapterData[]>([initialChapter])
+  // Ref mirror of chapters state — allows async functions to read current value
+  // without the Promise/setState anti-pattern (which breaks under React concurrent rendering)
+  const chaptersRef = useRef<ChapterData[]>([initialChapter])
+
   const [isLoading, setIsLoading] = useState(false)
   const [reachedEnd, setReachedEnd] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -64,6 +68,18 @@ export function ContinuousScrollReader({
   const viewedChapters = useRef<Set<string>>(new Set([initialChapter.id]))
   const loadingRef = useRef(false) // Prevent concurrent fetches
 
+  // Tracks which chapters have been recorded in chapter_reads (avoids double-inserts)
+  const readChapters = useRef<Set<string>>(new Set())
+
+  // Helper that keeps chapters state and chaptersRef in sync
+  const updateChapters = useCallback((updater: (prev: ChapterData[]) => ChapterData[]) => {
+    setChapters(prev => {
+      const next = updater(prev)
+      chaptersRef.current = next
+      return next
+    })
+  }, [])
+
   // Find next chapter ID to load based on what's already loaded
   const getNextChapterIdAfter = useCallback((loadedChapters: ChapterData[]) => {
     const lastLoaded = loadedChapters[loadedChapters.length - 1]
@@ -72,17 +88,18 @@ export function ContinuousScrollReader({
     return allChapterIds[currentIdx + 1].id
   }, [allChapterIds])
 
-  // Fetch a single chapter by ID
+  // Fetch a single chapter by ID. Passing storyId as a query param lets the API
+  // validate the chapter belongs to this story, preventing cross-story ID probing.
   const fetchChapter = useCallback(async (chapterId: string): Promise<ChapterData | null> => {
     try {
-      const response = await fetch(`/api/chapters/${chapterId}/content`)
+      const response = await fetch(`/api/chapters/${chapterId}/content?storyId=${storyId}`)
       if (!response.ok) throw new Error('Failed to load chapter')
       return await response.json()
     } catch (err) {
       console.error('Error loading chapter:', err)
       return null
     }
-  }, [])
+  }, [storyId])
 
   // Load next chapter and keep preloading if needed
   const loadNextChapter = useCallback(async () => {
@@ -92,15 +109,9 @@ export function ContinuousScrollReader({
     setError(null)
 
     try {
-      // Get current chapters from state
-      const currentChapters = await new Promise<ChapterData[]>(resolve => {
-        setChapters(prev => {
-          resolve(prev)
-          return prev
-        })
-      })
-
-      const nextId = getNextChapterIdAfter(currentChapters)
+      // Read current chapters directly from the ref — avoids the Promise/setState anti-pattern
+      // that breaks under React 18 concurrent rendering
+      const nextId = getNextChapterIdAfter(chaptersRef.current)
       if (!nextId) {
         setReachedEnd(true)
         return
@@ -112,7 +123,7 @@ export function ContinuousScrollReader({
         return
       }
 
-      setChapters(prev => [...prev, data])
+      updateChapters(prev => [...prev, data])
 
       // Stop if chapter is gated/locked
       if (!data.hasAccess) {
@@ -122,7 +133,7 @@ export function ContinuousScrollReader({
       loadingRef.current = false
       setIsLoading(false)
     }
-  }, [reachedEnd, getNextChapterIdAfter, fetchChapter])
+  }, [reachedEnd, getNextChapterIdAfter, fetchChapter, updateChapters])
 
   // Preload chapters on mount and whenever chapters change
   useEffect(() => {
@@ -203,7 +214,9 @@ export function ContinuousScrollReader({
     return () => observers.forEach(obs => obs.disconnect())
   }, [chapters, storySlug, storyShortId])
 
-  // Update reading progress when active chapter changes
+  // Update reading progress when active chapter changes.
+  // Only advances the pointer — never regresses to an earlier chapter.
+  // Sets scroll_position: 0 so that returning in paged mode starts at the top of the chapter.
   useEffect(() => {
     if (!currentUserId || !activeChapterId) return
 
@@ -228,6 +241,9 @@ export function ContinuousScrollReader({
           .update({
             chapter_id: activeChapterId,
             chapter_number: chapter.chapterNumber,
+            // Reset to 0 so that returning readers in paged mode start at the top
+            // of the chapter rather than an irrelevant scroll position from a prior chapter
+            scroll_position: 0,
             updated_at: new Date().toISOString(),
           })
           .eq('id', (existing as any).id)
@@ -237,6 +253,7 @@ export function ContinuousScrollReader({
           story_id: storyId,
           chapter_id: activeChapterId,
           chapter_number: chapter.chapterNumber,
+          scroll_position: 0,
         })
       }
     }
@@ -244,6 +261,51 @@ export function ContinuousScrollReader({
     const timer = setTimeout(updateProgress, 2000)
     return () => clearTimeout(timer)
   }, [activeChapterId, currentUserId, storyId, chapters])
+
+  // Mark chapters as read via chapter_reads when the reader reaches the end of each chapter.
+  // Uses IntersectionObserver on sentinel divs placed at the bottom of each chapter's content.
+  // This covers dynamically-loaded chapters (index > 0) that useScrollPosition cannot reach
+  // because it is anchored to #chapter-content (the initial server-rendered chapter only).
+  // The initial chapter (index 0) sentinel fires when the reader scrolls to the separator,
+  // which immediately follows the server-rendered content.
+  const markChapterRead = useCallback(async (chapId: string) => {
+    if (!currentUserId || readChapters.current.has(chapId)) return
+    readChapters.current.add(chapId)
+
+    const supabase = createClient()
+    const { error: readError } = await supabase
+      .from('chapter_reads')
+      .upsert(
+        { chapter_id: chapId, story_id: storyId, user_id: currentUserId },
+        { onConflict: 'user_id,chapter_id' }
+      )
+
+    if (readError) {
+      console.error('Error marking chapter as read:', readError)
+      readChapters.current.delete(chapId) // allow retry on next scroll
+    }
+  }, [currentUserId, storyId])
+
+  useEffect(() => {
+    if (!currentUserId) return
+
+    const sentinels = document.querySelectorAll<HTMLElement>('[data-read-sentinel]')
+    const observers: IntersectionObserver[] = []
+
+    sentinels.forEach(sentinel => {
+      const chapId = sentinel.dataset.readSentinel!
+      if (readChapters.current.has(chapId)) return // already recorded
+
+      const observer = new IntersectionObserver(
+        ([entry]) => { if (entry.isIntersecting) markChapterRead(chapId) },
+        { threshold: 0 }
+      )
+      observer.observe(sentinel)
+      observers.push(observer)
+    })
+
+    return () => observers.forEach(obs => obs.disconnect())
+  }, [chapters, currentUserId, markChapterRead])
 
   return (
     <div className="continuous-scroll-reader">
@@ -257,8 +319,13 @@ export function ContinuousScrollReader({
                   if (el) chapterRefs.current.set(chapter.id, el)
                 }}
                 data-chapter-id={chapter.id}
+                data-chapter-number={chapter.chapterNumber}
                 className="h-0"
               />
+              {/* Read sentinel for the initial server-rendered chapter.
+                  Positioned at the start of the separator (= end of chapter 1 content).
+                  Fires markChapterRead when the reader scrolls down to the chapter boundary. */}
+              <div data-read-sentinel={chapter.id} />
               {chapters.length > 1 && (
                 <ChapterSeparator
                   completedChapter={{
@@ -304,6 +371,7 @@ export function ContinuousScrollReader({
                 if (el) chapterRefs.current.set(chapter.id, el)
               }}
               data-chapter-id={chapter.id}
+              data-chapter-number={chapter.chapterNumber}
             >
               <header className="mb-8">
                 <h1 className="text-2xl md:text-3xl font-bold">{chapter.title}</h1>
@@ -361,6 +429,10 @@ export function ContinuousScrollReader({
                       <p className="text-sm whitespace-pre-wrap break-words">{chapter.defaultAuthorNoteAfter}</p>
                     </div>
                   )}
+
+                  {/* Read sentinel — placed at the end of accessible chapter content.
+                      When this enters the viewport, the reader has finished the chapter. */}
+                  <div data-read-sentinel={chapter.id} />
                 </>
               )}
 

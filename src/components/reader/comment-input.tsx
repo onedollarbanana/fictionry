@@ -143,7 +143,7 @@ export function CommentInput({
         onChange={handleInput}
         onKeyDown={handleKeyDown}
         placeholder="Write a comment... Use @username to mention someone, [spoiler]text[/spoiler] for spoilers"
-        className="w-full p-3 border rounded-lg resize-none bg-white dark:bg-zinc-900"
+        className="w-full p-3 border border-border rounded-lg resize-none bg-background text-foreground"
         rows={3}
         maxLength={MAX_CHARS}
       />
